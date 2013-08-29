@@ -82,25 +82,29 @@ expected to be the fullname of a module. The default value is C<'Select'>.
 
 use Module::Load qw(load);
 
+use Class::Method::Modifiers qw(install_modifier);
+
 sub new::with::timeout {
     my ($class, %args) = @_;
-    $class->isa('IO::Socket')
-      or croak 'new::with::timeout can be used only on classes that isa IO::Socket';
+    $class->isa('IO::Socket') && $class->can('sysread') && $class->can('syswrite')
+      or croak 'new::with::timeout can be used only on classes that isa IO::Socket and can sysread() and syswrite()';
+
+    my $timeout_read = delete $args{TimeoutRead};
+    my $timeout_write = delete $args{TimeoutWrite};
+
+    $timeout_read || $timeout_write
+      or return $class->new(%args);
 
     my $class_with_timeout = $class . '::With::Timeout'
 
     my $strategy = delete $args{TimeoutStrategy} || 'Select';
     index( $strategy, '+' ) == 0
       or $strategy = 'IO::Socket::Timeout::Strategy::' . $strategy;
-
     load $strategy;
 
-    if (delete $args{TimeoutRead}) {
-        
-    }
-    if (delete $args{TimeoutWrite}) {
-    }
-    my $instance = $class->new(%args);
-    $
+    push @{"${class_with_timeout}::ISA"}, $class;
+    $strategy->apply_to($class_with_timeout, $timeout_read, $timeout_write);
+
+    $class_with_timeout->new(%args);
 
 }
