@@ -4,14 +4,10 @@ use Class::Method::Modifiers qw(install_modifier);
 use POSIX qw(ETIMEDOUT ECONNRESET);
 use Time::HiRes qw(alarm);
 use Config;
+use Carp;
 
 
 # ABSTRACT: proxy to read/write using Alarm as a timeout provider ( Not Safe: can clobber previous alarm )
-
-has socket      => ( is => 'ro', required => 1 );
-has in_timeout  => ( is => 'ro', isa      => Num, default => sub {0.5} );
-has out_timeout => ( is => 'ro', isa      => Num, default => sub {0.5} );
-has is_valid    => ( is => 'rw', isa      => Bool, default => sub {1} );
 
 sub apply_to {
     my ($class, $into, $timeout_read, $timeout_write) = @_;
@@ -25,23 +21,31 @@ sub apply_to {
     $Config{osname} eq 'MSWin32'
       and croak "Alarm cannot interrupt blocking system calls in Win32!";
 
-    install_modifier($into, 'around', sysread, \&sysread_with_timeout);
+    if ($timeout_read) {
+        ${*$self}{__timeout_read__} = $timeout_read;
+        install_modifier($into, 'around', 'sysread', \&sysread_with_timeout);
+    }
+    if ($timeout_write) {
+        ${*$self}{__timeout_write__} = $timeout_write;
+        install_modifier($into, 'around', 'syswrite', \&syswrite_with_timeout);
+    }
 
 }
 
 sub clean {
-    $_[0]->close;
-    $_[0]->{__is_valid__} = 0;
+    my ($self) = @_;
+    $self->close;
+    ${*$self}{__is_valid__} = 0;
 }
 
 sub sysread_with_timeout {
     my $orig = shift;
     my $self = shift;
 
-    $self->{__is_valid__} or $! = ECONNRESET, return;
+    ${*self}{__is_valid__} or $! = ECONNRESET, return;
 
     my $buffer;
-    my $seconds = $self->in_timeout;
+    my $seconds = ${*self}{__timeout_read__};
 
     my $result = eval {
         local $SIG{'ALRM'} = sub { croak 'Timeout !' };
@@ -57,7 +61,7 @@ sub sysread_with_timeout {
 
     if ($@) {
         $self->clean();
-        $! = ETIMEDOUT;     ## no critic (RequireLocalizedPunctuationVars)
+        $! = ETIMEDOUT;
     }
     else {
         $_[0] = $buffer;
@@ -66,9 +70,9 @@ sub sysread_with_timeout {
     $result;
 }
 
-sub syswrite {
+sub syswrite_with_timeout {
     my $self = shift;
-    $self->is_valid or $! = ECONNRESET, return;    ## no critic (RequireLocalizedPunctuationVars)
+    ${*self}{__is_valid__} or $! = ECONNRESET, return;
 
     my $seconds = $self->out_timeout;
     my $result  = eval {

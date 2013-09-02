@@ -27,15 +27,15 @@ C<IO::Socket::INET>.
                                                      TimeoutWrite => 5,
                                                      # other standard arguments );
 
-  my $socket = IO::Socket->new::with::timeout( Timeout => 5,
-                                               TimeoutReadWrite => 5,
-                                               TimeoutStrategy => 'Alarm',
-                                               # other standard arguments );
+  my $socket = IO::Socket::INET->new::with::timeout( Timeout => 5,
+                                                     TimeoutReadWrite => 5,
+                                                     TimeoutStrategy => 'Alarm',
+                                                     # other standard arguments );
 
-  my $socket = IO::Socket->new::with::timeout( Timeout => 5,
-                                               TimeoutReadWrite => 5,
-                                               TimeoutStrategy => '+My::Own::Strategy',
-                                               # other standard arguments );
+  my $socket = IO::Socket::INET->new::with::timeout( Timeout => 5,
+                                                     TimeoutReadWrite => 5,
+                                                     TimeoutStrategy => '+My::Own::Strategy',
+                                                     # other standard arguments );
 
   
 
@@ -92,15 +92,15 @@ sub new::with::timeout {
     my $timeout_read = delete $args{TimeoutRead};
     my $timeout_write = delete $args{TimeoutWrite};
 
-    $timeout_read || $timeout_write
-      or return $class->new(%args);
-
-    my $class_with_timeout = $class . '::With::Timeout'
-
     my $strategy = delete $args{TimeoutStrategy} || 'Select';
     index( $strategy, '+' ) == 0
       or $strategy = 'IO::Socket::Timeout::Strategy::' . $strategy;
     load $strategy;
+
+    $timeout_read || $timeout_write
+      or return $class->new(%args);
+
+    my $class_with_timeout = $class . '::With::Timeout';
 
     push @{"${class_with_timeout}::ISA"}, $class;
     $strategy->apply_to($class_with_timeout, $timeout_read, $timeout_write);
@@ -108,3 +108,5 @@ sub new::with::timeout {
     $class_with_timeout->new(%args);
 
 }
+
+1;
