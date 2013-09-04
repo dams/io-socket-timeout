@@ -1,5 +1,8 @@
 package IO::Socket::Timeout;
 
+use strict;
+use warnings;
+
 use Carp;
 
 # ABSTRACT: IO::Socket with read/write timeout
@@ -84,28 +87,46 @@ use Module::Load qw(load);
 
 use Class::Method::Modifiers qw(install_modifier);
 
-sub new::with::timeout {
-    my ($class, %args) = @_;
-    $class->isa('IO::Socket') && $class->can('sysread') && $class->can('syswrite')
-      or croak 'new::with::timeout can be used only on classes that isa IO::Socket and can sysread() and syswrite()';
+our %TIMEOUT_CLASS;
 
+sub new::with::timeout {
+#    print STDERR "  ARGS :" . Dumper(\@_); use Data::Dumper;
+    my $class = shift
+      or croak "needs a class name. Try IO::Socket::INET->new::with::timeout(...)";
+    load $class;
+    $class->isa('IO::Socket')
+      or croak 'new::with::timeout can be used only on classes that isa IO::Socket';
+
+    # if arguments are not key values, just original class constructor
+    @_ % 2
+      and return $class->new(@_);
+
+    my %args = @_;
     my $timeout_read = delete $args{TimeoutRead};
     my $timeout_write = delete $args{TimeoutWrite};
 
-    my $strategy = delete $args{TimeoutStrategy} || 'Select';
+    my $strategy = delete $args{TimeoutStrategy} || 'Alarm';
     index( $strategy, '+' ) == 0
       or $strategy = 'IO::Socket::Timeout::Strategy::' . $strategy;
     load $strategy;
 
-    $timeout_read || $timeout_write
+    # if no timeout feature is used, just call original class constructor
+    $timeout_read > 0 || $timeout_write > 0
       or return $class->new(%args);
 
+    # create our derivated class
     my $class_with_timeout = $class . '::With::Timeout';
 
-    push @{"${class_with_timeout}::ISA"}, $class;
-    $strategy->apply_to($class_with_timeout, $timeout_read, $timeout_write);
+    if ( ! $TIMEOUT_CLASS{$class_with_timeout} ) {
+        no strict 'refs';
+        push @{"${class_with_timeout}::ISA"}, $class;
+        $strategy->apply_to_class($class_with_timeout, $timeout_read, $timeout_write);
+        $TIMEOUT_CLASS{$class_with_timeout} = 1;
+    }
 
-    $class_with_timeout->new(%args);
+    my $instance = $class_with_timeout->new(%args);
+    $strategy->apply_to_instance($instance, $class_with_timeout, $timeout_read, $timeout_write);
+    $instance;
 
 }
 
