@@ -41,13 +41,13 @@ sub create_server_with_timeout {
 
                 print STDERR "P3\n";
                 # Then get data (with delay)
-                print STDERR "P4\n";
-                # sleep($write_delay);
+                print STDERR "P4 $write_delay\n";
+                sleep($write_delay);
                 print STDERR "P5\n";
                 if ( defined (my $message = <$client>) ) {
                 print STDERR " P6\n";
                     print STDERR " ------ SERVER GOT $message";
-#                    sleep($read_delay);
+                    sleep($read_delay);
                     my $response = "S" . $message;
                     print STDERR " ------ SERVER WRITES $response";
                     print $client $response;

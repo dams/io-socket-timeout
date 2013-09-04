@@ -40,23 +40,25 @@ use Test::Exception;
 #                  );
 # };
 
+use POSIX qw(ETIMEDOUT ECONNRESET);
+
 subtest 'test with connection timeout', sub {
 TestTimeout->test( provider => 'Alarm',
                    connection_delay => 0,
                    read_timeout => 1,
-                   read_delay => 0,
+                   read_delay => 3,
+                   write_timeout => 0,
                    write_delay => 0,
                    callback => sub {
                        my ($client) = @_;
                        print STDERR " ------ CLIENT SENDS OK\n";
-                       lives_ok {
-#                           $DB::single = 1;
-                           $client->print("OK\n");
+                       $client->print("OK\n");
                        print STDERR " ------ done\n";
-                           print STDERR " ------ CLIENT ask for response\n";
-                           my $response = $client->getline;
-                           print STDERR " ------ CLIENT GOT $response\n";
-                       } 'no exception while connecting, writing, reading';
+                       print STDERR " ------ CLIENT ask for response\n";
+                       my $response = $client->getline;
+                       is $response, undef, "we've hit timeout";
+                       is $!, 'Operation timed out', "and error is timeout";
+                       print STDERR " ------ CLIENT GOT " . ($response // 'undef') . "\n";
 
 #                       throws_ok {  } qr/Error in 'ping' : $etimeout/,
 #                         "using provider $provider_name, should die in case of timeout";

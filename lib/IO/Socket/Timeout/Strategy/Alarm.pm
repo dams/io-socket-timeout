@@ -28,6 +28,9 @@ sub apply_to_class {
 #      and install_modifier($into, 'around', 'sysread', \&sysread_with_timeout);
 
     $timeout_read
+      and install_modifier($into, 'around', 'getline', \&getline_with_timeout);
+
+    $timeout_write
       and install_modifier($into, 'around', 'print', \&print_with_timeout);
 
     $timeout_write
@@ -56,10 +59,10 @@ sub clean {
 
 # print STDERR "in sysread_with_timeout";
 
-#     ${*self}{__is_valid__} or $! = ECONNRESET, return;
+#     ${*$self}{__is_valid__} or $! = ECONNRESET, return;
 
 #     my $buffer;
-#     my $seconds = ${*self}{__timeout_read__};
+#     my $seconds = ${*$self}{__timeout_read__};
 
 #     my $result = eval {
 #         local $SIG{'ALRM'} = sub { croak 'Timeout !' };
@@ -84,40 +87,68 @@ sub clean {
 #     $result;
 # }
 
-sub print_with_timeout {
+sub getline_with_timeout {
     my $orig = shift;
     my $self = shift;
 
+print STDERR "in getline_with_timeout";
+
     ${*$self}{__is_valid__} or $! = ECONNRESET, return;
 
-    my $seconds = ${*self}{__timeout_write__};
+    my $buffer;
+    my $seconds = ${*$self}{__timeout_read__};
 
     my $result = eval {
-        local $SIG{'ALRM'} = sub { croak 'timeout while performing print' };
+        local $SIG{'ALRM'} = sub { croak 'timeout' };
         alarm($seconds);
 
         my $data_read = $orig->($self, @_);
 
         alarm(0);
 
-        $buffer = $_[0];    # NECESSARY, timeout does not map the alias @_ !!
         $data_read;
     };
 
     if ($@) {
-        $self->clean();
+        clean($self);
         $! = ETIMEDOUT;
-    }
-    else {
-        $_[0] = $buffer;
+        return;
     }
 
     $result;
 }
 
+sub print_with_timeout {
+    my $orig = shift;
+    my $self = shift;
+
+    ${*$self}{__is_valid__} or $! = ECONNRESET, return;
+
+    my $seconds = ${*$self}{__timeout_write__};
+
+    my $result = eval {
+        local $SIG{'ALRM'} = sub { croak 'timeout while performing print' };
+        alarm($seconds);
+
+        my $res = $orig->($self, @_);
+
+        alarm(0);
+
+        $res;
+    };
+
+    if ($@) {
+        clean($self);
+        $! = ETIMEDOUT;
+        return;
+    }
+
+    return $result;
+}
+
 sub syswrite_with_timeout {
     my $self = shift;
-    ${*self}{__is_valid__} or $! = ECONNRESET, return;
+    ${*$self}{__is_valid__} or $! = ECONNRESET, return;
 
     my $seconds = $self->out_timeout;
     my $result  = eval {
@@ -131,7 +162,7 @@ sub syswrite_with_timeout {
         $readed;
     };
     if ($@) {
-        $self->clean();
+        clean($self);
         $! = ETIMEDOUT;    ## no critic (RequireLocalizedPunctuationVars)
     }
 
