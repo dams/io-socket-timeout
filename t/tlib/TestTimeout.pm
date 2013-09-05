@@ -32,27 +32,20 @@ sub create_server_with_timeout {
 
             my $buffer;
             while (1) {
-                print STDERR "P1\n";
                # First, establish connection
-                # sleep($connection_delay);
                 my $client = $socket->accept();
-                print STDERR "P2\n";
                 $client or next;
+#                sleep($connection_delay);
 
-                print STDERR "P3\n";
                 # Then get data (with delay)
-                print STDERR "P4 $write_delay\n";
-                sleep($write_delay);
-                print STDERR "P5\n";
                 if ( defined (my $message = <$client>) ) {
-                print STDERR " P6\n";
-                    print STDERR " ------ SERVER GOT $message";
-                    sleep($read_delay);
                     my $response = "S" . $message;
-                    print STDERR " ------ SERVER WRITES $response";
+                    print $client $response;
+                    $message = <$client>;
+                    $response = "S" . $message;
+                    sleep($read_delay);
                     print $client $response;
                 }
-                print STDERR "P7\n";
                 $client->close();
             }
         },

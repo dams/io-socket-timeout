@@ -90,7 +90,6 @@ use Class::Method::Modifiers qw(install_modifier);
 our %TIMEOUT_CLASS;
 
 sub new::with::timeout {
-#    print STDERR "  ARGS :" . Dumper(\@_); use Data::Dumper;
     my $class = shift
       or croak "needs a class name. Try IO::Socket::INET->new::with::timeout(...)";
     load $class;
@@ -111,7 +110,7 @@ sub new::with::timeout {
     load $strategy;
 
     # if no timeout feature is used, just call original class constructor
-    $timeout_read > 0 || $timeout_write > 0
+    $timeout_read && $timeout_read > 0 || $timeout_write && $timeout_write > 0
       or return $class->new(%args);
 
     # create our derivated class
@@ -124,6 +123,8 @@ sub new::with::timeout {
         $TIMEOUT_CLASS{$class_with_timeout} = 1;
     }
 
+    print STDERR Dumper(\%args); use Data::Dumper;
+    print STDERR Dumper([caller()]); use Data::Dumper;
     my $instance = $class_with_timeout->new(%args);
     $strategy->apply_to_instance($instance, $class_with_timeout, $timeout_read, $timeout_write);
     $instance;
