@@ -1,15 +1,6 @@
 use strict;
 use warnings;
 
-BEGIN {
-    use Config;
-    if ( $Config{osname} eq 'MSWin32' ) {
-        require Test::More;
-        Test::More::plan( skip_all =>
-              'should not test IO::Socket::Timeout::Strategy::Alarm under Win32' );
-    }
-}
-
 use Test::More;
 use FindBin qw($Bin);
 use lib "$Bin/tlib";
@@ -18,7 +9,7 @@ use Test::Exception;
 
 
 subtest 'test with no delays and no timeouts', sub {
-TestTimeout->test( provider => 'Alarm',
+TestTimeout->test( provider => 'Select',
                    connection_delay => 0,
                    read_delay => 0,
                    write_delay => 0,
@@ -37,7 +28,7 @@ TestTimeout->test( provider => 'Alarm',
 use POSIX qw(ETIMEDOUT ECONNRESET);
 
 subtest 'test with read timeout', sub {
-TestTimeout->test( provider => 'Alarm',
+TestTimeout->test( provider => 'Select',
                    connection_delay => 0,
                    read_timeout => 0.2,
                    read_delay => 3,
@@ -46,6 +37,7 @@ TestTimeout->test( provider => 'Alarm',
                    callback => sub {
                        my ($client) = @_;
                        $client->print("OK\n");
+                       $DB::single = 1;
                        my $response = $client->getline;
                        is $response, "SOK\n", "got proper response 1";
                        $client->print("OK2\n");
@@ -57,7 +49,7 @@ TestTimeout->test( provider => 'Alarm',
 };
 
 subtest 'test with sysread timeout', sub {
-TestTimeout->test( provider => 'Alarm',
+TestTimeout->test( provider => 'Select',
                    connection_delay => 0,
                    read_timeout => 0.2,
                    read_delay => 3,

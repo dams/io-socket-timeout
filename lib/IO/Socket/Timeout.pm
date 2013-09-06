@@ -104,7 +104,7 @@ sub new::with::timeout {
     my $timeout_read = delete $args{TimeoutRead};
     my $timeout_write = delete $args{TimeoutWrite};
 
-    my $strategy = delete $args{TimeoutStrategy} || 'Alarm';
+    my $strategy = delete $args{TimeoutStrategy} || 'SetSockOpt';
     index( $strategy, '+' ) == 0
       or $strategy = 'IO::Socket::Timeout::Strategy::' . $strategy;
     load $strategy;
@@ -114,7 +114,12 @@ sub new::with::timeout {
       or return $class->new(%args);
 
     # create our derivated class
-    my $class_with_timeout = $class . '::With::Timeout';
+    my $class_with_timeout = $class . '__WITH__'
+      . join('_AND_',
+             'READ' x !!$timeout_read,
+             'WRITE' x !!$timeout_write)
+      . '__'
+      . $strategy;
 
     if ( ! $TIMEOUT_CLASS{$class_with_timeout} ) {
         no strict 'refs';
@@ -129,6 +134,9 @@ sub new::with::timeout {
     $strategy->apply_to_instance($instance, $class_with_timeout, $timeout_read, $timeout_write);
     $instance;
 
+}
+
+sub socketpair::with::timeout {
 }
 
 1;

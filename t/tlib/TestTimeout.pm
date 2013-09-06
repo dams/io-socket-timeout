@@ -24,7 +24,6 @@ sub create_server_with_timeout {
             my $port   = shift;
             my $socket = IO::Socket::INET->new(
                 Listen    => 5,
-#                $connection_timeout ? (Timeout => $connection_timeout ) : (),
                 Reuse     => 1,
                 Blocking  => 1,
                 LocalPort => $port
@@ -35,14 +34,15 @@ sub create_server_with_timeout {
                # First, establish connection
                 my $client = $socket->accept();
                 $client or next;
-#                sleep($connection_delay);
 
                 # Then get data (with delay)
                 if ( defined (my $message = <$client>) ) {
                     my $response = "S" . $message;
                     print $client $response;
                     $message = <$client>;
+                    print STDERR " SERVER GOT $message\n";
                     $response = "S" . $message;
+                    print STDERR " SLEEPING $read_delay\n";
                     sleep($read_delay);
                     print $client $response;
                 }
