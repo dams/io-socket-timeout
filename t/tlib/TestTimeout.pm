@@ -40,9 +40,7 @@ sub create_server_with_timeout {
                     my $response = "S" . $message;
                     print $client $response;
                     $message = <$client>;
-                    print STDERR " SERVER GOT $message\n";
                     $response = "S" . $message;
-                    print STDERR " SLEEPING $read_delay\n";
                     sleep($read_delay);
                     print $client $response;
                 }

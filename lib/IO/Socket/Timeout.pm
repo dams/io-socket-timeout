@@ -128,8 +128,6 @@ sub new::with::timeout {
         $TIMEOUT_CLASS{$class_with_timeout} = 1;
     }
 
-    print STDERR Dumper(\%args); use Data::Dumper;
-    print STDERR Dumper([caller()]); use Data::Dumper;
     my $instance = $class_with_timeout->new(%args);
     $strategy->apply_to_instance($instance, $class_with_timeout, $timeout_read, $timeout_write);
     $instance;
@@ -137,6 +135,9 @@ sub new::with::timeout {
 }
 
 sub socketpair::with::timeout {
+
+# TODO
+
 }
 
 1;

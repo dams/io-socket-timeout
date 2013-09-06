@@ -15,7 +15,8 @@ use base qw(IO::Socket::Timeout::Strategy);
 # ABSTRACT: proxy to read/write using IO::Select as a timeout provider
 
 sub apply_to_class {
-    my ($class, $into, $timeout_read, $timeout_write) = @_;
+    my $class = shift;
+    my ($into, $timeout_read, $timeout_write) = @_;
 
     $class->SUPER::apply_to_class(@_);
 
@@ -56,6 +57,9 @@ sub read_wrapper {
     my $orig = shift;
     my $self = shift;
 
+    defined ${*$self}{__is_valid__}
+      or return $orig->($self, @_);
+
     ${*$self}{__is_valid__} or $! = ECONNRESET, return;
 
     ${*$self}{__select__}->can_read(${*$self}{__timeout_read__})
@@ -69,6 +73,9 @@ sub read_wrapper {
 sub write_wrapper {
     my $orig = shift;
     my $self = shift;
+
+    defined ${*$self}{__is_valid__}
+      or return $orig->($self, @_);
 
     ${*$self}{__is_valid__} or $! = ECONNRESET, return;
 

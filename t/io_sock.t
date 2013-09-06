@@ -57,24 +57,15 @@ if ($^O eq 'os2' and
 }
 
 $port = $listen->sockport;
-print STDERR " ******* $port\n";
-
-use Data::Dumper; print STDERR " >>>>>>>>> BEFORE FORK : " . Dumper({ %{*$listen} });
 
 if($pid = fork()) {
 
-$ENV{PLOP} = 5;
-use Data::Dumper; print STDERR " >>>>>>>>> IN FATHER $ENV{PLOP} . LISTEN : " . Dumper({ %{*$listen} });
     $sock = $listen->accept() or die "accept failed: $!";
-use Data::Dumper; print STDERR " >>>>>>>>> IN FATHER SOCK : " . Dumper({ %{*$sock} });
     print "ok 2\n";
 
     $sock->autoflush(1);
     
-    print STDERR " ---------******** GETLINE\n";
-$ENV{DUMP_GETLINE} = 1;
     print $sock->getline();
-$ENV{DUMP_GETLINE} = 0;
 
     print $sock "ok 4\n";
 
@@ -86,9 +77,6 @@ $ENV{DUMP_GETLINE} = 0;
 
 } elsif(defined $pid) {
 
-$ENV{PLOP} = 42;
- print STDERR " >>>>>>>>> IN CHILD $ENV{PLOP} \n";
-    print STDERR "------------------- P0 -\n";
     $sock = IO::Socket::INET->new::with::timeout(PeerPort => $port,
 				  Proto => 'tcp',
 				  PeerAddr => 'localhost',
@@ -103,17 +91,11 @@ $ENV{PLOP} = 42;
 				 )
 	or die "$! (maybe your system does not have a localhost at all, 'localhost' or 127.0.0.1)";
 
-    print STDERR "------------------- P1 -\n";
     $sock->autoflush(1);
-    print STDERR "------------------- P2 -\n";
 
-    print STDERR "------------------- P3 -\n";
     print $sock "ok 3\n";
-    print STDERR "------------------- P4 -\n";
 
-    print STDERR "------------------- P5 -\n";
     print $sock->getline();
-    print STDERR "------------------- P6 -\n";
 
     $sock->close;
 

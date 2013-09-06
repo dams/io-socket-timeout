@@ -16,7 +16,8 @@ use base qw(IO::Socket::Timeout::Strategy);
 # ABSTRACT: proxy to read/write using Time::Out (which uses alarm) as a timeout provider ( safe, won't clobber previous existing alarm )
 
 sub apply_to_class {
-    my ($class, $into, $timeout_read, $timeout_write) = @_;
+    my $class = shift;
+    my ($into, $timeout_read, $timeout_write) = @_;
 
     $class->SUPER::apply_to_class(@_);
 
@@ -67,6 +68,8 @@ sub read_wrapper {
     my $orig = shift;
     my $self = shift;
 
+    defined ${*$self}{__is_valid__}
+      or return $orig->($self, @_);
 
     ${*$self}{__is_valid__} or $! = ECONNRESET, return;
 
@@ -83,6 +86,9 @@ sub read_wrapper {
 sub read_wrapper_with_buffer {
      my $orig = shift;
      my $self = shift;
+
+    defined ${*$self}{__is_valid__}
+      or return $orig->($self, @_);
 
      ${*$self}{__is_valid__} or $! = ECONNRESET, return;
 
@@ -109,6 +115,9 @@ sub write_wrapper {
     my $orig = shift;
     my $self = shift;
 
+    defined ${*$self}{__is_valid__}
+      or return $orig->($self, @_);
+
     ${*$self}{__is_valid__} or $! = ECONNRESET, return;
 
     my $seconds = ${*$self}{__timeout_write__};
@@ -124,6 +133,9 @@ sub write_wrapper {
 sub write_wrapper_with_buffer {
     my $orig = shift;
     my $self = shift;
+
+    defined ${*$self}{__is_valid__}
+      or return $orig->($self, @_);
 
     ${*$self}{__is_valid__} or $! = ECONNRESET, return;
 

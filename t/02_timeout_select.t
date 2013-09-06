@@ -37,7 +37,6 @@ TestTimeout->test( provider => 'Select',
                    callback => sub {
                        my ($client) = @_;
                        $client->print("OK\n");
-                       $DB::single = 1;
                        my $response = $client->getline;
                        is $response, "SOK\n", "got proper response 1";
                        $client->print("OK2\n");

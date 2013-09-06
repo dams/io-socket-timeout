@@ -77,13 +77,8 @@ sub wrapper {
     my $orig = shift;
     my $self = shift;
 
-if ($ENV{DUMP_GETLINE}) {
-    use Data::Dumper; print STDERR " >>>>>>>>>> IN GETLINE PLOP is " . $ENV{PLOP} . " " . Dumper({ %{*$self} });
-#print STDERR " >>>>>>>>> IN WRAPPER VALID is : " . ${*$self}{__is_valid__} . "\n";
-}
-
-# If there is no __is_valid__ we should not abort.
-#    ${*$self}{__is_valid__} == 0
+    defined ${*$self}{__is_valid__}
+      or return $orig->($self, @_);
 
     ${*$self}{__is_valid__} or $! = ECONNRESET, return;
 
