@@ -52,7 +52,7 @@ C<IO::Socket::INET>.
 
 =head1 CONSTRUCTOR
 
-=head2 new_with_timeout
+=head2 new::with::timeout
 
 To be able to work with any class that is or inherits from IO::Socket, the
 interface of this module is a bit unusual.
@@ -94,17 +94,17 @@ expected to be the fullname of a module. The default value is C<'Select'>.
 =head1 WHEN TIMEOUT IS HIT
 
 When a timeout (read, write) is hit on the socket, the function trying to be
-performed will return C<undef> (actually an empty list), and C<$!> will be set
-to C<ETIMEOUT>.
+performed will return C<undef> (actually an empty list), the socket will be
+closed, and C<$!> will be set to C<ETIMEOUT>.
 
-In addition to that, the socket wil be B<closed> and marked as invalid
-internally, and any subsequential use of it will return C<undef>, and $! will
-be set to C<ECONNRESET>.
+The socket wil be B<closed> and marked as invalid internally, and any
+subsequential use of it will return C<undef>, and $! will be set to
+C<ECONNRESET>.
 
 Why close the socket ? If you read a socket, waiting for message A, and hit a
 timeout, if you then reuse the socket to read a message B, you might receive
 the answer A instead. There is no way to properly discard the first message,
-because the sender mught not be reachable (he that's probably why you got a
+because the sender mught not be reachable (that's probably why you got a
 timeout in the first place). So after a timeout failure, it's important that
 you recreate the socket.
 
@@ -117,11 +117,14 @@ You can import ETIMEOUT and ECONNRESET by using C<POSIX>:
 I recommend using third-party module, like C<Action::Retry>. Something like
 this:
 
-  my $socket = IO::Socket->new::with::timeout(TimeoutRead => 0.5);
+  my $socket;
 
   my $answer;
   my $action = Action::Retry->new(
     attempt_code => sub {
+        # (re-)create the socket if needed
+        $socket && ! $socket->error
+          or $socket = IO::Socket->new::with::timeout(TimeoutRead => 0.5);
         # send the request, read the answer
         $socket->print($_[0]);
         defined($answer = $socket->getline) or die $!;
@@ -298,8 +301,6 @@ sub socketpair::with::timeout {
     my $instance = $class_with_timeout->new(%args);
     $strategy->apply_to_instance($instance, $class_with_timeout, $timeout_read, $timeout_write);
     $instance;
-
-# TODO
 
 }
 
