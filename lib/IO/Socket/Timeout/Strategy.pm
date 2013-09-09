@@ -28,4 +28,11 @@ sub new_wrapper {
 
     return $instance;
 }
+
+sub cleanup_socket {
+    my ($class, $socket) = @_;
+    ${*$socket}{__is_valid__} = 0;
+    $socket->close;
+}
+
 1;

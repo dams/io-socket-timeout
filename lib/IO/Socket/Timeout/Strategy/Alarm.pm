@@ -58,12 +58,6 @@ sub apply_to_instance {
     return $instance;
 }
 
-sub clean {
-    my ($self) = @_;
-    $self->close;
-    ${*$self}{__is_valid__} = 0;
-}
-
 sub read_wrapper {
     my $orig = shift;
     my $self = shift;
@@ -78,7 +72,7 @@ sub read_wrapper {
     my $result = timeout $seconds, @_ => sub { $orig->($self, @_) };
     $@ or return $result;
 
-    clean($self);
+    __PACKAGE__->cleanup_socket($self);
     $! = ETIMEDOUT;
     return;
 }
@@ -106,7 +100,7 @@ sub read_wrapper_with_buffer {
         return $result;
     }
 
-    clean($self);
+    __PACKAGE__->cleanup_socket($self);
     $! = ETIMEDOUT;
     return;
 }
@@ -125,7 +119,7 @@ sub write_wrapper {
     my $result = timeout $seconds, @_ => sub { $orig->($self, @_) };
     $@ or return $result;
 
-    clean($self);
+    __PACKAGE__->cleanup_socket($self);
     $! = ETIMEDOUT;
     return;
 }
@@ -153,7 +147,7 @@ sub write_wrapper_with_buffer {
         return $result;
     }
 
-    clean($self);
+    __PACKAGE__->cleanup_socket($self);
     $! = ETIMEDOUT;
     return;
 }

@@ -7,7 +7,6 @@ use IO::Select;
 
 use Class::Method::Modifiers qw(install_modifier);
 use POSIX qw(ETIMEDOUT ECONNRESET);
-use Config;
 use Carp;
 
 use base qw(IO::Socket::Timeout::Strategy);
@@ -37,20 +36,19 @@ sub apply_to_class {
 }
 
 sub apply_to_instance {
-    my ($class, $instance, $into, $timeout_read, $timeout_write) = @_;
-    ${*$instance}{__timeout_read__} = $timeout_read;
-    ${*$instance}{__timeout_write__} = $timeout_write;
-    ${*$instance}{__is_valid__} = 1;
-    ${*$instance}{__select__} = IO::Select->new;
-    ${*$instance}{__select__}->add($instance);
-    return $instance;
+    my ($class, $socket, $into, $timeout_read, $timeout_write) = @_;
+    ${*$socket}{__timeout_read__} = $timeout_read;
+    ${*$socket}{__timeout_write__} = $timeout_write;
+    ${*$socket}{__is_valid__} = 1;
+    ${*$socket}{__select__} = IO::Select->new;
+    ${*$socket}{__select__}->add($socket);
+    return $socket;
 }
 
-sub clean {
-    my ($self) = @_;
-    $self->close;
-    ${*$self}{__select__}->remove( $_[0] );
-    ${*$self}{__is_valid__} = 0;
+sub cleanup_socket {
+    my ($class, $socket) = @_;
+    ${*$socket}{__select__}->remove( $socket );
+    $class->SUPER::cleanup_socket($socket);
 }
 
 sub read_wrapper {
@@ -65,7 +63,7 @@ sub read_wrapper {
     ${*$self}{__select__}->can_read(${*$self}{__timeout_read__})
       and return $orig->($self, @_);
 
-    clean($self);
+    __PACKAGE__->cleanup_socket($self);
     $! = ETIMEDOUT;
     return;
 }
@@ -82,7 +80,7 @@ sub write_wrapper {
     ${*$self}{__select__}->can_write(${*$self}{__timeout_write__})
       and return $orig->($self, @_);
 
-    clean($self);
+    __PACKAGE__->cleanup_socket($self);
     $! = ETIMEDOUT;
     return;
 }

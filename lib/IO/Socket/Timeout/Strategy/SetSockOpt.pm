@@ -67,12 +67,6 @@ sub apply_to_instance {
     return $instance;
 }
 
-sub clean {
-    my ($self) = @_;
-    $self->close;
-    ${*$self}{__is_valid__} = 0;
-}
-
 sub wrapper {
     my $orig = shift;
     my $self = shift;
@@ -85,7 +79,7 @@ sub wrapper {
     my $result = $orig->($self, @_);
     defined $result and return $result;
 
-    clean($self);
+    __PACKAGE__->cleanup_socket($self);
     $! = ETIMEDOUT;
     return;
 }

@@ -43,6 +43,9 @@ TestTimeout->test( provider => 'SetSockOpt',
                        $response = $client->getline;
                        is $response, undef, "we've hit timeout";
                        is $!, 'Operation timed out', "and error is timeout";
+                       is ${*$client}{__is_valid__}, 0, "socket is not valid anymore";
+                       ok $client->error, "socket is in error";
+                       ok !$client->opened, "socket is not opened";
                    },
                  );
 };
@@ -67,6 +70,9 @@ TestTimeout->test( provider => 'SetSockOpt',
                        is $length_read, undef, "we've hit timeout";
                        is length($buffer2), 0, "buffer is undef";
                        is $!, 'Operation timed out', "and error is timeout";
+                       is ${*$client}{__is_valid__}, 0, "socket is not valid anymore";
+                       ok $client->error, "socket is in error";
+                       ok !$client->opened, "socket is not opened";
                    },
                  );
 };
