@@ -192,21 +192,15 @@ use Module::Load qw(load);
 
 use Class::Method::Modifiers qw(install_modifier);
 
-our %TIMEOUT_CLASS;
-our $DEFAULT_STRATEGY = 'Select';
-
 use Config;
+
+our %TIMEOUT_CLASS;
+our $DEFAULT_STRATEGY = $Config{osname} ne 'netbsd' && $Config{osname} ne 'solaris' ? 'SetSockOpt' : 'Select';
+
 
 sub import {
     my ($package, %args) = @_;
-
-
-    $DEFAULT_STRATEGY = 'SetSockOpt';
-    $Config{osname} eq 'netbsd' || $Config{osname} eq 'solaris'
-      and $DEFAULT_STRATEGY = 'Select';
-
     $DEFAULT_STRATEGY = $args{default_strategy} || $DEFAULT_STRATEGY;
-
 }
 
 sub new::with::timeout {
