@@ -30,7 +30,7 @@ sub apply_to_class {
     $Config{osname} eq 'MSWin32'
       and croak "Alarm cannot interrupt blocking system calls in Win32!";
 
-    my @wrap_read_functions = qw(getc getline getlines);
+    my @wrap_read_functions = qw(getc getline gets getlines);
     my @wrap_read_functions_with_buffer = qw(recv sysread read);
     my @wrap_write_functions = qw( ungetc print printf say truncate);
     my @wrap_write_functions_with_buffer = qw(send syswrite write);
@@ -69,8 +69,13 @@ sub read_wrapper {
 
     my $seconds = ${*$self}{__timeout_read__};
 
-    my $result = timeout $seconds, @_ => sub { $orig->($self, @_) };
-    $@ or return $result;
+    if (wantarray) {
+        my @result = timeout $seconds, @_ => sub { $orig->($self, @_) };
+        $@ or return @result;
+    } else {
+        my $result = timeout $seconds, @_ => sub { $orig->($self, @_) };
+        $@ or return $result;
+    }
 
     __PACKAGE__->cleanup_socket($self);
     $! = ETIMEDOUT;

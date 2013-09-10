@@ -25,7 +25,7 @@ sub apply_to_class {
     $Config{osname} eq 'solaris'
       and croak "Solaris is not supported yet";
 
-    my @wrap_read_functions = qw(getc getline getlines);
+    my @wrap_read_functions = qw(getc getline gets getlines);
     my @wrap_read_functions_with_buffer = qw(recv sysread read);
     my @wrap_write_functions = qw( ungetc print printf say truncate);
     my @wrap_write_functions_with_buffer = qw(send syswrite write);
@@ -76,8 +76,13 @@ sub wrapper {
 
     ${*$self}{__is_valid__} or $! = ECONNRESET, return;
 
-    my $result = $orig->($self, @_);
-    defined $result and return $result;
+    if (wantarray) {
+        my @result = $orig->($self, @_);
+        @result and return @result;
+    } else {
+        my $result = $orig->($self, @_);
+        defined $result and return $result;
+    }
 
     __PACKAGE__->cleanup_socket($self);
     $! = ETIMEDOUT;

@@ -174,6 +174,9 @@ you can override the default strategy being used using one of these ways:
   require IO::Socket::Timeout;
   IO::Socket::Timeout->import(default_strategy => 'Alarm');
 
+  # you can also use your own strategy as default
+  use IO::Socket::Timeout default_strategy => '+My::Strategie';
+
 =item configuration variable
 
   $IO::Socket::Timeout::DEFAULT_STRATEGY = 'Alarm';
@@ -182,9 +185,15 @@ you can override the default strategy being used using one of these ways:
 
 =head1 CREATE YOUR OWN STRATEGY
 
+
 =head1 SEE ALSO
 
 L<Action::Retry>, L<IO::Select>, L<Time::Out>
+
+=head1 THANKS
+
+The author would like to thank Toby Inkster, Vincent Pitt for various helps and
+useful remarks.
 
 =cut
 

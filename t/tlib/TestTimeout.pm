@@ -9,7 +9,6 @@ use IO::Socket::Timeout;
 use Test::TCP;
 use POSIX qw(ETIMEDOUT ECONNRESET strerror);
 use Exporter 'import';
-use feature ':5.12';
 
 require bytes;
 
