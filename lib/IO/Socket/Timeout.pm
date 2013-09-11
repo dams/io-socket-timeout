@@ -82,6 +82,11 @@ accepted.
 If set to a value, the socket will timeout on writes. Value is in seconds, floats
 accepted.
 
+=item TimeoutReadWrite
+
+If set to a value, the socket will timeout on reads and writes. Value is in seconds, floats
+accepted. If set, this option superseeds TimeoutRead and TimeoutWrite.
+
 =item TimeoutStrategy
 
 Used to specify the timeout implementation used. The value should be a module
@@ -224,8 +229,13 @@ sub new::with::timeout {
       and return $class->new(@_);
 
     my %args = @_;
+
     my $timeout_read = delete $args{TimeoutRead};
     my $timeout_write = delete $args{TimeoutWrite};
+    if (defined (my $timeout_readwrite = delete $args{TimeoutReadWrite})) {
+        $timeout_read = $timeout_write = $timeout_readwrite;
+    }
+    
 
     my $strategy = delete $args{TimeoutStrategy} || $DEFAULT_STRATEGY;
     index( $strategy, '+' ) == 0
