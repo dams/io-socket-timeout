@@ -41,8 +41,8 @@ C<IO::Socket::INET>.
                                                      # other standard arguments );
 
   # When using the socket:
-  $socket->print($request);
-  my $response = $socket->getline;
+  print $socket $request;
+  my $response = <$socket>;
   if (!defined $response && $! eq 'Operation timed out') {
     die "timeout reading on the socket";
   }
@@ -92,7 +92,10 @@ accepted. If set, this option superseeds TimeoutRead and TimeoutWrite.
 Used to specify the timeout implementation used. The value should be a module
 name. If it B<doesn't> start with C<+>, the value will be prepended with
 C<IO::Socket::Timeout::Strategy::>. If it B<does> start with C<+>, the value is
-expected to be the fullname of a module. The default value is C<'Select'>.
+expected to be the fullname of a module. The default value is C<'SetSockOpt'>
+unless the detected Operating System is NetBSD or Solaris, in which case it'll
+use C<Select> instead. See L<IO::Socket::Timeout::Strategy::SetSockOpt> for
+instance.
 
 =back
 
@@ -119,8 +122,8 @@ You can import ETIMEOUT and ECONNRESET by using C<POSIX>:
 
 =head1 IF YOU NEED TO RETRY
 
-I recommend using third-party module, like C<Action::Retry>. Something like
-this:
+If you want to implement a try / wait / retry mechanism, I recommend using a
+third-party module, like C<Action::Retry>. Something like this:
 
   my $socket;
 
@@ -138,7 +141,7 @@ this:
     on_failure_code => sub { die 'aborting, to many retries' },
   );
 
-  my $val = $action->run('GET mykey');
+  my $reply = $action->run('GET mykey');
 
 =head1 AVAILABLE STRATEGIES
 
@@ -154,7 +157,7 @@ up a timeout.
 
 =head2 Select
 
-The default strategy. Uses C<IO::Select>
+Uses C<select>.
 
 =head2 Alarm
 
