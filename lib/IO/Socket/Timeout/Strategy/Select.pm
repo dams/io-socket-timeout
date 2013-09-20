@@ -3,7 +3,9 @@ package IO::Socket::Timeout::Strategy::Select;
 use strict;
 use warnings;
 use Time::HiRes;
-use IO::Select;
+#use IO::Select;
+
+use PerlIO::via::Timeout qw(timeout_strategy);
 
 use Class::Method::Modifiers qw(install_modifier);
 use POSIX qw(ETIMEDOUT ECONNRESET);
@@ -40,14 +42,17 @@ sub apply_to_instance {
     ${*$socket}{__timeout_read__} = $timeout_read;
     ${*$socket}{__timeout_write__} = $timeout_write;
     ${*$socket}{__is_valid__} = 1;
-    ${*$socket}{__select__} = IO::Select->new;
-    ${*$socket}{__select__}->add($socket);
+#    ${*$socket}{__select__} = IO::Select->new;
+#    ${*$socket}{__select__}->add($socket);
+
+    binmode $socket, ':via(Timeout)';
+    timeout_strategy($socket, 'Select', read_timeout => $timeout_read);
     return $socket;
 }
 
 sub cleanup_socket {
     my ($class, $socket) = @_;
-    ${*$socket}{__select__}->remove( $socket );
+#    ${*$socket}{__select__}->remove( $socket );
     $class->SUPER::cleanup_socket($socket);
 }
 
@@ -60,8 +65,16 @@ sub read_wrapper {
 
     ${*$self}{__is_valid__} or $! = ECONNRESET, return;
 
-    ${*$self}{__select__}->can_read(${*$self}{__timeout_read__})
-      and return $orig->($self, @_);
+#    ${*$self}{__select__}->can_read(${*$self}{__timeout_read__})
+#      and return $orig->($self, @_);
+
+    if (wantarray) {
+        my @result = $orig->($self, @_);
+        @result and return @result;
+    } else {
+        my $result = $orig->($self, @_);
+        defined $result and return $result;
+    }
 
     __PACKAGE__->cleanup_socket($self);
     $! = ETIMEDOUT;
@@ -77,8 +90,8 @@ sub write_wrapper {
 
     ${*$self}{__is_valid__} or $! = ECONNRESET, return;
 
-    ${*$self}{__select__}->can_write(${*$self}{__timeout_write__})
-      and return $orig->($self, @_);
+#    ${*$self}{__select__}->can_write(${*$self}{__timeout_write__})
+#      and return $orig->($self, @_);
 
     __PACKAGE__->cleanup_socket($self);
     $! = ETIMEDOUT;

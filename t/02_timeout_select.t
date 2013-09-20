@@ -8,22 +8,22 @@ use TestTimeout;
 use Test::Exception;
 
 
-subtest 'test with no delays and no timeouts', sub {
-TestTimeout->test( provider => 'Select',
-                   connection_delay => 0,
-                   read_delay => 0,
-                   write_delay => 0,
-                   callback => sub {
-                       my ($client) = @_;
-                       $client->print("OK\n");
-                       my $response = $client->getline;
-                       is $response, "SOK\n", "got proper response 1";
-                       $client->print("OK2\n");
-                       $response = $client->getline;
-                       is $response, "SOK2\n", "got proper response 2";
-                   },
-                 );
-};
+# subtest 'test with no delays and no timeouts', sub {
+# TestTimeout->test( provider => 'Select',
+#                    connection_delay => 0,
+#                    read_delay => 0,
+#                    write_delay => 0,
+#                    callback => sub {
+#                        my ($client) = @_;
+#                        $client->print("OK\n");
+#                        my $response = $client->getline;
+#                        is $response, "SOK\n", "got proper response 1";
+#                        $client->print("OK2\n");
+#                        $response = $client->getline;
+#                        is $response, "SOK2\n", "got proper response 2";
+#                    },
+#                  );
+# };
 
 use POSIX qw(ETIMEDOUT ECONNRESET);
 
