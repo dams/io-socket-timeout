@@ -63,8 +63,8 @@ sub test {
         PeerPort        => $server->port,
         $p{connection_timeout} ? (Timeout => $p{connection_timeout} ) : (),
         TimeoutStrategy => $p{provider},
-        TimeoutRead => $p{read_timeout},
-        TimeoutWrite => $p{write_timeout},
+        ReadTimeout => $p{read_timeout},
+        WriteTimeout => $p{write_timeout},
     );
 
     my $etimeout = strerror(ETIMEDOUT);

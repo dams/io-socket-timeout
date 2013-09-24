@@ -1,2 +1,3 @@
 {{$NEXT}}
         . first implementation
+        . actually rewrote it based on PerlIO::via::Timeout
