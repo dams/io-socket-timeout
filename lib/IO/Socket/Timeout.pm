@@ -3,6 +3,8 @@ package IO::Socket::Timeout;
 use strict;
 use warnings;
 
+use PerlIO::via::Timeout qw(timeout_strategy);
+
 use Carp;
 
 # ABSTRACT: IO::Socket with read/write timeout
@@ -22,28 +24,29 @@ C<IO::Socket::INET>.
 
   # creates a IO::Socket::INET::With::Timeout object
   my $socket = IO::Socket::INET->new::with::timeout( Timeout => 2,
-                                                     TimeoutRead => 0.5,
+                                                     ReadTimeout => 0.5,
                                                      # other standard arguments );
 
   my $socket = IO::Socket::UNIX->new::with::timeout( Timeout => 2,
-                                                     TimeoutRead => 0.5,
-                                                     TimeoutWrite => 0.5,
+                                                     ReadTimeout => 0.5,
+                                                     WriteTimeout => 0.5,
                                                      # other standard arguments );
 
   my $socket = IO::Socket::INET->new::with::timeout( Timeout => 2,
-                                                     TimeoutReadWrite => 0.5,
+                                                     ReadWriteTimeout => 0.5,
                                                      TimeoutStrategy => 'Alarm',
                                                      # other standard arguments );
 
   my $socket = IO::Socket::INET->new::with::timeout( Timeout => 2,
-                                                     TimeoutReadWrite => 0.5,
+                                                     ReadWriteTimeout => 0.5,
                                                      TimeoutStrategy => '+My::Own::Strategy',
                                                      # other standard arguments );
 
   # When using the socket:
+  use Errno qw(ETIMEDOUT);
   print $socket $request;
   my $response = <$socket>;
-  if (!defined $response && $! eq 'Operation timed out') {
+  if (!defined $response && 0+$! == ETIMEDOUT) {
     die "timeout reading on the socket";
   }
 
@@ -70,46 +73,46 @@ specified with these parameters:
 =item Timeout
 
 This is the default parameter that already exists in IO::Socket. If set to a
-value, the socket will timeout at connection time by default.
+value, the socket will timeout at B<connection time>.
 
-=item TimeoutRead
+=item ReadTimeout
 
 If set to a value, the socket will timeout on reads. Value is in seconds, floats
 accepted.
 
-=item TimeoutWrite
+=item WriteTimeout
 
 If set to a value, the socket will timeout on writes. Value is in seconds, floats
 accepted.
 
-=item TimeoutReadWrite
+=item ReadWriteTimeout
 
 If set to a value, the socket will timeout on reads and writes. Value is in seconds, floats
-accepted. If set, this option superseeds TimeoutRead and TimeoutWrite.
+accepted. If set, this option superseeds ReadTimeout and WriteTimeout.
 
 =item TimeoutStrategy
 
 Used to specify the timeout implementation used. The value should be a module
 name. If it B<doesn't> start with C<+>, the value will be prepended with
-C<IO::Socket::Timeout::Strategy::>. If it B<does> start with C<+>, the value is
+C<PerlIO::via::Timeout::Strategy::>. If it B<does> start with C<+>, the value is
 expected to be the fullname of a module. The default value is C<'SetSockOpt'>
 unless the detected Operating System is NetBSD or Solaris, in which case it'll
-use C<Select> instead. See L<IO::Socket::Timeout::Strategy::SetSockOpt> for
+use C<SelectWithReset> instead. See L<PerlIO::via::Timeout::Strategy::SetSockOpt> for
 instance.
+
+To get a list of available strategy, see below (L<AVAILABLE STRATEGIES>).
 
 =back
 
 =head1 WHEN TIMEOUT IS HIT
 
 When a timeout (read, write) is hit on the socket, the function trying to be
-performed will return C<undef> (actually an empty list), the socket will be
-closed, and C<$!> will be set to C<ETIMEOUT>.
+performed will return C<undef>, and C<$!> will be set to C<ETIMEOUT>.
 
-The socket wil be B<closed> and marked as invalid internally, and any
-subsequential use of it will return C<undef>, and $! will be set to
-C<ECONNRESET>.
+The socket will be marked as invalid internally, and any subsequential use of
+it will return C<undef>, and $! will be set to C<ECONNRESET>.
 
-Why close the socket ? If you read a socket, waiting for message A, and hit a
+Why invalid the socket ? If you read a socket, waiting for message A, and hit a
 timeout, if you then reuse the socket to read a message B, you might receive
 the answer A instead. There is no way to properly discard the first message,
 because the sender mught not be reachable (that's probably why you got a
@@ -118,7 +121,7 @@ you recreate the socket.
 
 You can import ETIMEOUT and ECONNRESET by using C<POSIX>:
 
-  use POSIX qw(ETIMEDOUT ECONNRESET);
+  use Errno qw(ETIMEDOUT ECONNRESET);
 
 =head1 IF YOU NEED TO RETRY
 
@@ -132,7 +135,7 @@ third-party module, like C<Action::Retry>. Something like this:
     attempt_code => sub {
         # (re-)create the socket if needed
         $socket && ! $socket->error
-          or $socket = IO::Socket->new::with::timeout(TimeoutRead => 0.5);
+          or $socket = IO::Socket->new::with::timeout(ReadTimeout => 0.5);
         # send the request, read the answer
         $socket->print($_[0]);
         defined($answer = $socket->getline) or die $!;
@@ -155,19 +158,34 @@ This strategy sets appropriate read / write options on the socket, to have a
 proper timeout. This is probably the most efficient and precise way of setting
 up a timeout.
 
-=head2 Select
+It makes sure the socket can't be used once the timeout has
+been hit, by returning undef and setting C<$!> to C<ECONNRESET>.
+
+See L<PerlIO::via::Timeout::Strategy::SetSockOpt>.
+
+=head2 SelectWithReset
 
 Uses C<select>.
 
-=head2 Alarm
+It makes sure the socket can't be used once the timeout has been hit, by
+returning undef and setting C<$!> to C<ECONNRESET>.
 
-Doesn't work on Win32. Uses C<Time::Out> (which uses C<alarm> internally)
+See L<PerlIO::via::Timeout::Strategy::SelectWithReset>.
+
+=head2 AlarmWithReset
+
+Doesn't work on Win32. Uses C<Time::Out> (which uses C<alarm> internally).
+
+It makes sure the socket can't be used once the timeout has been hit, by
+returning undef and setting C<$!> to C<ECONNRESET>.
+
+See L<PerlIO::via::Timeout::Strategy::AlarmWithReset>.
 
 =head1 DEFAULT STRATEGY
 
 When nothing is specified, IO::Socket::Timeout will use the C<SetSockOpt>
 strategy by default, unless the detected Operating System is NetBSD or Solaris.
-In which case it'll use C<Select> instead.
+In which case it'll use C<SelectWithReset> instead.
 
 you can override the default strategy being used using one of these ways:
 
@@ -196,7 +214,7 @@ you can override the default strategy being used using one of these ways:
 
 =head1 SEE ALSO
 
-L<Action::Retry>, L<IO::Select>, L<Time::Out>
+L<Action::Retry>, L<IO::Select>, L<PerlIO::via::Timeout>, L<Time::Out>
 
 =head1 THANKS
 
@@ -204,8 +222,6 @@ The author would like to thank Toby Inkster, Vincent Pitt for various helps and
 useful remarks.
 
 =cut
-
-use Module::Load qw(load);
 
 use Class::Method::Modifiers qw(install_modifier);
 
@@ -223,7 +239,12 @@ sub import {
 sub new::with::timeout {
     my $class = shift
       or croak "needs a class name. Try IO::Socket::INET->new::with::timeout(...)";
-    load $class;
+
+    my $class_file = $class;
+    $class_file =~ s!::|'!/!g;
+    $class_file .= '.pm';
+    require $class_file;
+
     $class->isa('IO::Socket')
       or croak 'new::with::timeout can be used only on classes that isa IO::Socket';
 
@@ -233,91 +254,67 @@ sub new::with::timeout {
 
     my %args = @_;
 
-    my $timeout_read = delete $args{TimeoutRead};
-    my $timeout_write = delete $args{TimeoutWrite};
-    if (defined (my $timeout_readwrite = delete $args{TimeoutReadWrite})) {
-        $timeout_read = $timeout_write = $timeout_readwrite;
+    my $read_timeout = delete $args{ReadTimeout};
+    my $write_timeout = delete $args{WriteTimeout};
+    if (defined (my $readwrite_timeout = delete $args{ReadWriteTimeout})) {
+        $read_timeout = $write_timeout = $readwrite_timeout;
     }
     
-
-    my $strategy = delete $args{TimeoutStrategy} || $DEFAULT_STRATEGY;
-    index( $strategy, '+' ) == 0
-      or $strategy = 'IO::Socket::Timeout::Strategy::' . $strategy;
-    load $strategy;
-
     # if no timeout feature is used, just call original class constructor
-    $timeout_read && $timeout_read > 0 || $timeout_write && $timeout_write > 0
+    $read_timeout && $read_timeout > 0 || $write_timeout && $write_timeout > 0
       or return $class->new(%args);
 
-    # create our derivated class
-    my $class_with_timeout = $class . '__WITH__'
-      . join('_AND_',
-             'READ' x !!$timeout_read,
-             'WRITE' x !!$timeout_write)
-      . '__'
-      . $strategy;
+    my $socket = $class->new(%args);
 
-    if ( ! $TIMEOUT_CLASS{$class_with_timeout} ) {
-        no strict 'refs';
-        push @{"${class_with_timeout}::ISA"}, $class;
-        $strategy->apply_to_class($class_with_timeout, $timeout_read, $timeout_write);
-        $TIMEOUT_CLASS{$class_with_timeout} = 1;
-    }
-
-    my $instance = $class_with_timeout->new(%args);
-    $strategy->apply_to_instance($instance, $class_with_timeout, $timeout_read, $timeout_write);
-    $instance;
-
+    binmode($socket, ':via(Timeout)');
+    timeout_strategy( $socket, $args{TimeoutStrategy} || $DEFAULT_STRATEGY,
+                      read_timeout => $read_timeout,
+                      write_timeout => $write_timeout
+                    );
+    return $socket;
 }
 
 sub socketpair::with::timeout {
     my $class = shift
       or croak "needs a class name. Try IO::Socket::INET->socketpair::with::timeout(...)";
-    load $class;
-    $class->isa('IO::Socket')
-      or croak 'socketpair::with::timeout can be used only on classes that isa IO::Socket';
 
-    # DOMAIN, TYPE, PROTOCOL, TIMEOUT_ARGS
+    my $class_file = $class;
+    $class_file =~ s!::|'!/!g;
+    $class_file .= '.pm';
+    require $class_file;
+
+    $class->isa('IO::Socket')
+      or croak 'new::with::timeout can be used only on classes that isa IO::Socket';
+
+    # we expect DOMAIN, TYPE, PROTOCOL, TIMEOUT_ARGS. Otherwise just call original
     @_ == 4
       or return $class->socketpair(@_);
 
     my $timeout_args = pop;
 
-    my ($socket1, $socket2) = $class->socketpair(@_)
-      or return;
-
     my %args = %$timeout_args;
-    my $timeout_read = delete $args{TimeoutRead};
-    my $timeout_write = delete $args{TimeoutWrite};
-
-    my $strategy = delete $args{TimeoutStrategy} || $DEFAULT_STRATEGY;
-    index( $strategy, '+' ) == 0
-      or $strategy = 'IO::Socket::Timeout::Strategy::' . $strategy;
-    load $strategy;
-
-    # if no timeout feature is used, just call original class constructor
-    $timeout_read && $timeout_read > 0 || $timeout_write && $timeout_write > 0
-      or return $class->new(%args);
-
-    # create our derivated class
-    my $class_with_timeout = $class . '__WITH__'
-      . join('_AND_',
-             'READ' x !!$timeout_read,
-             'WRITE' x !!$timeout_write)
-      . '__'
-      . $strategy;
-
-    if ( ! $TIMEOUT_CLASS{$class_with_timeout} ) {
-        no strict 'refs';
-        push @{"${class_with_timeout}::ISA"}, $class;
-        $strategy->apply_to_class($class_with_timeout, $timeout_read, $timeout_write);
-        $TIMEOUT_CLASS{$class_with_timeout} = 1;
+    my $read_timeout = delete $args{ReadTimeout};
+    my $write_timeout = delete $args{WriteTimeout};
+    if (defined (my $readwrite_timeout = delete $args{ReadWriteTimeout})) {
+        $read_timeout = $write_timeout = $readwrite_timeout;
     }
 
-    my $instance = $class_with_timeout->new(%args);
-    $strategy->apply_to_instance($instance, $class_with_timeout, $timeout_read, $timeout_write);
-    $instance;
+    # if no timeout feature is used, just call original class constructor
+    $read_timeout && $read_timeout > 0 || $write_timeout && $write_timeout > 0
+      or return $class->socketpair(@_);
 
+    my ($socket1, $socket2) = $class->socketpair(@_)
+       or return;
+
+
+    foreach my $socket ($socket1, $socket2) {
+        binmode($socket, ':via(Timeout)');
+        timeout_strategy( $socket, $args{TimeoutStrategy} || $DEFAULT_STRATEGY,
+                          read_timeout => $read_timeout,
+                          write_timeout => $write_timeout
+                        );
+    }
+    return ($socket1, $socket2);
 }
 
 1;
