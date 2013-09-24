@@ -49,7 +49,7 @@ Boolean. Defaults to 1
 
 sub new {
     $^O =~ /^netbsd|solaris$/
-      and croak "This Strategy is not supported on '$osname'";
+      and croak "This Strategy is not supported on '$^O'";
     my $self = shift->SUPER::new(@_);
     open(my $fh, "<&=", $self->{_fd})
       or croak "couldn't open a new filehandle on the same file descriptor '" . $self->{_fd};
