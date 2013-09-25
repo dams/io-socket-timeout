@@ -1,5 +1,7 @@
 {{$NEXT}}
 
+0.11      2013-09-25 22:12:08 Europe/Paris
+
 0.10      2013-09-24 18:30:07 Europe/Paris
         . first implementation
         . actually rewrote it based on PerlIO::via::Timeout
