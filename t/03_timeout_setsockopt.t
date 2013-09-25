@@ -43,7 +43,7 @@ TestTimeout->test( provider => 'SetSockOpt',
                        $client->print("OK2\n");
                        $response = $client->getline;
                        is $response, undef, "we've hit timeout";
-                       is $!, 'Operation timed out', "and error is timeout";
+                       is 0+$!, ETIMEDOUT, "and error is timeout";
                        ok ! timeout_strategy($client)->is_valid, "socket is not valid anymore";
                    },
                  );

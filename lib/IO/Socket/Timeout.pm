@@ -223,12 +223,8 @@ useful remarks.
 
 =cut
 
-use Class::Method::Modifiers qw(install_modifier);
-
-use Config;
-
 our %TIMEOUT_CLASS;
-our $DEFAULT_STRATEGY = $Config{osname} ne 'netbsd' && $Config{osname} ne 'solaris' ? 'SetSockOpt' : 'Select';
+our $DEFAULT_STRATEGY = $^O ne 'netbsd' && $^O ne 'solaris' ? 'SetSockOpt' : 'Select';
 
 
 sub import {

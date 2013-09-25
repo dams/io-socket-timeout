@@ -36,8 +36,6 @@ TestTimeout->test( provider => 'AlarmWithReset',
                  );
 };
 
-use POSIX qw(ETIMEDOUT ECONNRESET);
-
 subtest 'test with read timeout', sub {
 TestTimeout->test( provider => 'AlarmWithReset',
                    connection_delay => 0,
