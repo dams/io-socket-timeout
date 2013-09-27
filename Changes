@@ -1,5 +1,8 @@
 {{$NEXT}}
 
+0.12      2013-09-27 12:06:48 Europe/Paris
+        . removed useless Test::Exception
+
 0.11      2013-09-25 22:12:08 Europe/Paris
 
 0.10      2013-09-24 18:30:07 Europe/Paris
