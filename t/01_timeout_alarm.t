@@ -13,7 +13,6 @@ use Test::More;
 use FindBin qw($Bin);
 use lib "$Bin/tlib";
 use TestTimeout;
-use Test::Exception;
 
 use PerlIO::via::Timeout qw(timeout_strategy);
 use Errno qw(ETIMEDOUT);
