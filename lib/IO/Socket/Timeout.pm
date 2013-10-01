@@ -53,7 +53,7 @@ C<IO::Socket::INET>.
   # You can change the default strategy that will be used, if possible.
   use IO::Socket::With::Timeout default_strategy => Select;
 
-=head1 CONSTRUCTOR
+=head1 CONSTRUCTORS
 
 =head2 new::with::timeout
 
@@ -103,6 +103,40 @@ instance.
 To get a list of available strategy, see below (L<AVAILABLE STRATEGIES>).
 
 =back
+
+=head2 socketpair::with::timeout
+
+There is an other way to create sockets from scratch, via C<socketpair>. As for
+the C<new> constructor, this module provides its counterpart with timeout
+feature.
+
+C<IO::Socket::INET->socketpair::with::timeout(...)> will return two instances of
+C<IO::Socket::INET>, as if it had been called with
+C<IO::Socket::INET->socketpair(...)>. However, it'll apply some mechanism on the
+resulting socket object so that it times out on read, write, or both.
+
+=head1 FINE-TUNING
+
+If you need to alter the behavior of the socket after it has been created, you
+can access its strategy and fiddle with it, using PerlIO::via::Timeout.
+
+  use IO::Socket::With::Timeout;
+  # create a socket with read timeout
+  my $socket = IO::Socket::INET->new::with::timeout( Timeout => 2,
+                                                     ReadTimeout => 0.5,
+                                                     # other standard arguments );
+  use PerlIO::via::Timeout qw(timeout_strategy);
+  # use PerlIO::via::Timeout to retrieve the strategy
+  my stratefy = timeout_strategy($sock);
+  # change read_timeout to 5 and write timeout to 1.5 sec
+  $strategy->read_timeout(5)
+  $strategy->write_timeout(1.5)
+  # actually disable the timeout for now
+  $strategy->disable_timeout()
+  # when re-enabling it, timeouts value are restored
+  $strategy->enable_timeout()
+
+See L<PerlIO::via::Timeout> for more details
 
 =head1 WHEN TIMEOUT IS HIT
 

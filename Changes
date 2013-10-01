@@ -1,4 +1,5 @@
 {{$NEXT}}
+        . more documentation. update prereqs
 
 0.13      2013-10-01 13:00:38 Europe/Paris
         . fixed setsockopt operation when disabling timeout
