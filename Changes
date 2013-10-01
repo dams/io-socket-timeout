@@ -1,5 +1,8 @@
 {{$NEXT}}
 
+0.13      2013-10-01 13:00:38 Europe/Paris
+        . fixed setsockopt operation when disabling timeout
+
 0.12      2013-09-27 12:06:48 Europe/Paris
         . removed useless Test::Exception
 
