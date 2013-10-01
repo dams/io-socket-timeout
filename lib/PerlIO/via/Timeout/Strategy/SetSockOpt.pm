@@ -100,9 +100,9 @@ sub _set_sock_opt {
               or croak "setsockopt(SO_SNDTIMEO): $!";
         }
     } else {
-            setsockopt($self->{_fh}, SOL_SOCKET, SO_RCVTIMEO, 0 )
+            setsockopt($self->{_fh}, SOL_SOCKET, SO_RCVTIMEO, pack( 'l!l!', 0, 0 ) )
               or croak "setsockopt(SO_RCVTIMEO): $!";
-            setsockopt($self->{_fh}, SOL_SOCKET, SO_SNDTIMEO, 0 )
+            setsockopt($self->{_fh}, SOL_SOCKET, SO_SNDTIMEO, pack( 'l!l!', 0, 0 ) )
               or croak "setsockopt(SO_SNDTIMEO): $!";
     }
 }
