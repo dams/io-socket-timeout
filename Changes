@@ -1,5 +1,8 @@
 {{$NEXT}}
 
+0.15      2013-10-10 14:53:41 Europe/Paris
+        . refactor based on new PerlIO::via::Timeout
+
 0.14      2013-10-01 16:37:09 Europe/Paris
         . more documentation. update prereqs
 
