@@ -61,7 +61,6 @@ sub test {
         PeerHost        => '127.0.0.1',
         PeerPort        => $server->port,
         $p{connection_timeout} ? (Timeout => $p{connection_timeout} ) : (),
-        TimeoutStrategy => $p{provider},
         ReadTimeout => $p{read_timeout},
         WriteTimeout => $p{write_timeout},
     );

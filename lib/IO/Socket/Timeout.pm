@@ -2,8 +2,8 @@ package IO::Socket::Timeout;
 
 use strict;
 use warnings;
-
-use PerlIO::via::Timeout qw(timeout_strategy);
+use PerlIO::via::TimeoutWithReset;
+use PerlIO::via::Timeout qw(:all);
 
 use Carp;
 
@@ -34,12 +34,6 @@ C<IO::Socket::INET>.
 
   my $socket = IO::Socket::INET->new::with::timeout( Timeout => 2,
                                                      ReadWriteTimeout => 0.5,
-                                                     TimeoutStrategy => 'Alarm',
-                                                     # other standard arguments );
-
-  my $socket = IO::Socket::INET->new::with::timeout( Timeout => 2,
-                                                     ReadWriteTimeout => 0.5,
-                                                     TimeoutStrategy => '+My::Own::Strategy',
                                                      # other standard arguments );
 
   # When using the socket:
@@ -49,9 +43,6 @@ C<IO::Socket::INET>.
   if (!defined $response && 0+$! == ETIMEDOUT) {
     die "timeout reading on the socket";
   }
-
-  # You can change the default strategy that will be used, if possible.
-  use IO::Socket::With::Timeout default_strategy => Select;
 
 =head1 CONSTRUCTORS
 
@@ -90,18 +81,6 @@ accepted.
 If set to a value, the socket will timeout on reads and writes. Value is in seconds, floats
 accepted. If set, this option superseeds ReadTimeout and WriteTimeout.
 
-=item TimeoutStrategy
-
-Used to specify the timeout implementation used. The value should be a module
-name. If it B<doesn't> start with C<+>, the value will be prepended with
-C<PerlIO::via::Timeout::Strategy::>. If it B<does> start with C<+>, the value is
-expected to be the fullname of a module. The default value is C<'SetSockOpt'>
-unless the detected Operating System is NetBSD or Solaris, in which case it'll
-use C<SelectWithReset> instead. See L<PerlIO::via::Timeout::Strategy::SetSockOpt> for
-instance.
-
-To get a list of available strategy, see below (L<AVAILABLE STRATEGIES>).
-
 =back
 
 =head2 socketpair::with::timeout
@@ -115,28 +94,26 @@ C<IO::Socket::INET>, as if it had been called with
 C<IO::Socket::INET->socketpair(...)>. However, it'll apply some mechanism on the
 resulting socket object so that it times out on read, write, or both.
 
-=head1 FINE-TUNING
+=head1 CHANGE SETTINGS AFTER CREATION
 
-If you need to alter the behavior of the socket after it has been created, you
-can access its strategy and fiddle with it, using PerlIO::via::Timeout.
+You can change the timeout settings of a socket after it has been instanciated.
+These functions are part of L<PerlIO::via::Timeout>. Check its documentation
+for more details.
 
   use IO::Socket::With::Timeout;
   # create a socket with read timeout
   my $socket = IO::Socket::INET->new::with::timeout( Timeout => 2,
                                                      ReadTimeout => 0.5,
                                                      # other standard arguments );
-  use PerlIO::via::Timeout qw(timeout_strategy);
-  # use PerlIO::via::Timeout to retrieve the strategy
-  my stratefy = timeout_strategy($sock);
-  # change read_timeout to 5 and write timeout to 1.5 sec
-  $strategy->read_timeout(5)
-  $strategy->write_timeout(1.5)
-  # actually disable the timeout for now
-  $strategy->disable_timeout()
-  # when re-enabling it, timeouts value are restored
-  $strategy->enable_timeout()
 
-See L<PerlIO::via::Timeout> for more details
+  use PerlIO::via::Timeout qw(:all);
+  # change read_timeout to 5 and write timeout to 1.5 sec
+  read_timeout($socket, 5)
+  write_timeout($socket, 1.5)
+  # actually disable the timeout for now
+  disable_timeout($socket)
+  # when re-enabling it, timeouts value are restored
+  enable_timeout($socket)
 
 =head1 WHEN TIMEOUT IS HIT
 
@@ -180,91 +157,18 @@ third-party module, like C<Action::Retry>. Something like this:
 
   my $reply = $action->run('GET mykey');
 
-=head1 AVAILABLE STRATEGIES
-
-Here is a list of strategies to be used. You can create your own (see below).
-
-=head2 SetSockOpt
-
-Doesn't work on Solaris and NetBSD.
-
-This strategy sets appropriate read / write options on the socket, to have a
-proper timeout. This is probably the most efficient and precise way of setting
-up a timeout.
-
-It makes sure the socket can't be used once the timeout has
-been hit, by returning undef and setting C<$!> to C<ECONNRESET>.
-
-See L<PerlIO::via::Timeout::Strategy::SetSockOpt>.
-
-=head2 SelectWithReset
-
-Uses C<select>.
-
-It makes sure the socket can't be used once the timeout has been hit, by
-returning undef and setting C<$!> to C<ECONNRESET>.
-
-See L<PerlIO::via::Timeout::Strategy::SelectWithReset>.
-
-=head2 AlarmWithReset
-
-Doesn't work on Win32. Uses C<Time::Out> (which uses C<alarm> internally).
-
-It makes sure the socket can't be used once the timeout has been hit, by
-returning undef and setting C<$!> to C<ECONNRESET>.
-
-See L<PerlIO::via::Timeout::Strategy::AlarmWithReset>.
-
-=head1 DEFAULT STRATEGY
-
-When nothing is specified, IO::Socket::Timeout will use the C<SetSockOpt>
-strategy by default, unless the detected Operating System is NetBSD or Solaris.
-In which case it'll use C<SelectWithReset> instead.
-
-you can override the default strategy being used using one of these ways:
-
-=over
-
-=item import option
-
-  # this will setup the Alarm strategy by default
-  use IO::Socket::Timeout default_strategy => 'Alarm';
-
-  # same, but at runtime
-  require IO::Socket::Timeout;
-  IO::Socket::Timeout->import(default_strategy => 'Alarm');
-
-  # you can also use your own strategy as default
-  use IO::Socket::Timeout default_strategy => '+My::Strategie';
-
-=item configuration variable
-
-  $IO::Socket::Timeout::DEFAULT_STRATEGY = 'Alarm';
-
-=back
-
-=head1 CREATE YOUR OWN STRATEGY
-
-
 =head1 SEE ALSO
 
 L<Action::Retry>, L<IO::Select>, L<PerlIO::via::Timeout>, L<Time::Out>
 
 =head1 THANKS
 
-The author would like to thank Toby Inkster, Vincent Pitt for various helps and
+Thanks to Vincent Pitt, Christian Hansen and Toby Inkster for various help and
 useful remarks.
 
 =cut
 
-our %TIMEOUT_CLASS;
-our $DEFAULT_STRATEGY = $^O ne 'netbsd' && $^O ne 'solaris' ? 'SetSockOpt' : 'Select';
-
-
-sub import {
-    my ($package, %args) = @_;
-    $DEFAULT_STRATEGY = $args{default_strategy} || $DEFAULT_STRATEGY;
-}
+our $DEFAULT_STRATEGY = 'Select';
 
 sub new::with::timeout {
     my $class = shift
@@ -296,11 +200,11 @@ sub new::with::timeout {
 
     my $socket = $class->new(%args);
 
-    binmode($socket, ':via(Timeout)');
-    timeout_strategy( $socket, $args{TimeoutStrategy} || $DEFAULT_STRATEGY,
-                      read_timeout => $read_timeout,
-                      write_timeout => $write_timeout
-                    );
+    binmode($socket, ':via(TimeoutWithReset)');
+    $read_timeout && $read_timeout > 0
+      and read_timeout($socket, $read_timeout);
+    $write_timeout && $write_timeout > 0
+      and write_timeout($socket, $write_timeout);
     return $socket;
 }
 
@@ -338,11 +242,11 @@ sub socketpair::with::timeout {
 
 
     foreach my $socket ($socket1, $socket2) {
-        binmode($socket, ':via(Timeout)');
-        timeout_strategy( $socket, $args{TimeoutStrategy} || $DEFAULT_STRATEGY,
-                          read_timeout => $read_timeout,
-                          write_timeout => $write_timeout
-                        );
+        binmode($socket, ':via(TimeoutWithReset)');
+        $read_timeout && $read_timeout > 0
+          and read_timeout($socket, $read_timeout);
+        $write_timeout && $write_timeout > 0
+          and write_timeout($socket, $write_timeout);
     }
     return ($socket1, $socket2);
 }
