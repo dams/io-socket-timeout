@@ -121,7 +121,7 @@ When a timeout (read, write) is hit on the socket, the function trying to be
 performed will return C<undef>, and C<$!> will be set to C<ETIMEOUT>.
 
 The socket will be marked as invalid internally, and any subsequential use of
-it will return C<undef>, and $! will be set to C<ECONNRESET>.
+it will return C<undef>, and C<$!> will be set to C<ECONNRESET>.
 
 Why invalid the socket ? If you read a socket, waiting for message A, and hit a
 timeout, if you then reuse the socket to read a message B, you might receive
@@ -130,7 +130,7 @@ because the sender mught not be reachable (that's probably why you got a
 timeout in the first place). So after a timeout failure, it's important that
 you recreate the socket.
 
-You can import ETIMEOUT and ECONNRESET by using C<POSIX>:
+You can import C<ETIMEOUT> and C<ECONNRESET> by using C<POSIX>:
 
   use Errno qw(ETIMEDOUT ECONNRESET);
 
