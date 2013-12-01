@@ -3,9 +3,10 @@ package IO::Socket::Timeout;
 use strict;
 use warnings;
 use PerlIO::via::TimeoutWithReset;
-use PerlIO::via::Timeout qw(:all);
+use Role::Tiny;
 
 use Carp;
+
 
 # ABSTRACT: IO::Socket with read/write timeout
 
@@ -81,6 +82,11 @@ accepted.
 If set to a value, the socket will timeout on reads and writes. Value is in seconds, floats
 accepted. If set, this option superseeds ReadTimeout and WriteTimeout.
 
+=item WithSysTimeout
+
+Defaults to 1. If set to a true value, C<sysread> and <syswrite> functions will
+be subjects to the timeout as well. Otherwise they won't.
+
 =back
 
 =head2 socketpair::with::timeout
@@ -94,11 +100,47 @@ C<IO::Socket::INET>, as if it had been called with
 C<IO::Socket::INET->socketpair(...)>. However, it'll apply some mechanism on the
 resulting socket object so that it times out on read, write, or both.
 
+=head1 METHODS
+
+=head2 read_timeout
+
+  my $current_timeout = $socket->read_timeout();
+  $socket->read_timeout($new_timeout);
+
+=head2 write_timeout
+
+  my $current_timeout = $socket->write_timeout();
+  $socket->write_timeout($new_timeout);
+
+=head2 enable_timeout
+
+  $socket->enable_timeout;
+
+=head2 disable_timeout
+
+  $socket->disable_timeout;
+
+=head2 timeout_enabled
+
+  my $is_timeout_enabled = $socket->timeout_enabled();
+  $socket->timeout_enabled(0);
+
+=head2 enable_sys_timeout
+
+  $socket->enable_sys_timeout;
+
+=head2 disable_sys_timeout
+
+  $socket->disable_sys_timeout;
+
+=head2 sys_timeout_enabled
+
+  my $is_sys_timeout_enabled = $socket->sys_timeout_enabled();
+  $socket->sys_timeout_enabled(0);
+
 =head1 CHANGE SETTINGS AFTER CREATION
 
 You can change the timeout settings of a socket after it has been instanciated.
-These functions are part of L<PerlIO::via::Timeout>. Check its documentation
-for more details.
 
   use IO::Socket::With::Timeout;
   # create a socket with read timeout
@@ -108,12 +150,12 @@ for more details.
 
   use PerlIO::via::Timeout qw(:all);
   # change read_timeout to 5 and write timeout to 1.5 sec
-  read_timeout($socket, 5)
-  write_timeout($socket, 1.5)
+  $socket->read_timeout(5)
+  $socket->write_timeout(1.5)
   # actually disable the timeout for now
-  disable_timeout($socket)
+  $socket->disable_timeout()
   # when re-enabling it, timeouts value are restored
-  enable_timeout($socket)
+  $socket->enable_timeout()
 
 =head1 WHEN TIMEOUT IS HIT
 
@@ -194,17 +236,26 @@ sub new::with::timeout {
         $read_timeout = $write_timeout = $readwrite_timeout;
     }
     
+    # by default we timeout on sysread/syswrite as well
+    my $with_sys_timeout = defined $args{WithSysTimeout} ? delete $args{WithSysTimeout} : 1;
+
     # if no timeout feature is used, just call original class constructor
     $read_timeout && $read_timeout > 0 || $write_timeout && $write_timeout > 0
       or return $class->new(%args);
 
-    my $socket = $class->new(%args);
+    my $socket = $class->new(%args)
+      or return;
 
     binmode($socket, ':via(TimeoutWithReset)');
+
+    Role::Tiny->apply_roles_to_object($socket, qw(IO::Socket::Timeout::Role::SysTimeout));
+
     $read_timeout && $read_timeout > 0
-      and read_timeout($socket, $read_timeout);
+      and $socket->read_timeout($read_timeout);
     $write_timeout && $write_timeout > 0
-      and write_timeout($socket, $write_timeout);
+      and $socket->write_timeout($write_timeout);
+    $socket->sys_timeout_enabled($with_sys_timeout);
+
     return $socket;
 }
 
@@ -233,22 +284,71 @@ sub socketpair::with::timeout {
         $read_timeout = $write_timeout = $readwrite_timeout;
     }
 
+    # by default we timeout on sysread/syswrite as well
+    my $with_sys_timeout = defined $args{WithSysTimeout} ? delete $args{WithSysTimeout} : 1;
+
     # if no timeout feature is used, just call original class constructor
     $read_timeout && $read_timeout > 0 || $write_timeout && $write_timeout > 0
-      or return $class->socketpair(@_);
+      or return $class->socketpair(%args);
 
-    my ($socket1, $socket2) = $class->socketpair(@_)
+    my ($socket1, $socket2) = $class->socketpair(%args)
        or return;
-
 
     foreach my $socket ($socket1, $socket2) {
         binmode($socket, ':via(TimeoutWithReset)');
+        Role::Tiny->apply_roles_to_object($socket, qw(IO::Socket::Timeout::Role::SysTimeout));
         $read_timeout && $read_timeout > 0
-          and read_timeout($socket, $read_timeout);
+          and $socket->read_timeout($read_timeout);
         $write_timeout && $write_timeout > 0
-          and write_timeout($socket, $write_timeout);
+          and $socket->write_timeout($write_timeout);
+        $socket->sys_timeout_enabled($with_sys_timeout);
     }
     return ($socket1, $socket2);
+}
+
+# sysread FILEHANDLE,SCALAR,LENGTH,OFFSET
+BEGIN {
+    *CORE::GLOBAL::sysread = sub {
+        state $_no_wrapping;
+        $_no_wrapping || ! PerlIO::via::Timeout->_fh2prop($_[0])->{sys_timeout_enabled}
+          and return CORE::sysread($_[0], $_[1], $_[2]);
+
+        $_no_wrapping = 1;
+        my $ret_val = PerlIO::via::TimeoutWithReset->READ($_[1], $_[2], $_[0]);
+        $_no_wrapping = 0;
+        return $ret_val;
+    }
+}
+
+# syswrite FILEHANDLE,SCALAR,LENGTH,OFFSET
+BEGIN {
+    *CORE::GLOBAL::syswrite = sub {
+        state $_no_wrapping;
+        $_no_wrapping || ! PerlIO::via::Timeout->_fh2prop($_[0])->{sys_timeout_enabled}
+          and return CORE::syswrite($_[0], $_[1], $_[2]);
+
+        $_no_wrapping = 1;
+        my $ret_val = PerlIO::via::TimeoutWithReset->WRITE($_[1], $_[0]);
+        $_no_wrapping = 0;
+        return $ret_val;
+    }
+}
+
+package IO::Socket::Timeout::Role::SysTimeout;
+use Role::Tiny;
+use PerlIO::via::Timeout;
+
+sub read_timeout    { goto &PerlIO::via::Timeout::read_timeout    }
+sub write_timeout   { goto &PerlIO::via::Timeout::write_timeout   }
+sub enable_timeout  { goto &PerlIO::via::Timeout::enable_timeout  }
+sub disable_timeout { goto &PerlIO::via::Timeout::disable_timeout }
+sub timeout_enabled { goto &PerlIO::via::Timeout::timeout_enabled }
+
+sub enable_sys_timeout  { $_[0]->sys_timeout_enabled(1) }
+sub disable_sys_timeout { $_[0]->sys_timeout_enabled(0) }
+sub sys_timeout_enabled {
+    @_ > 1 and PerlIO::via::Timeout->_fh2prop($_[0])->{sys_timeout_enabled} = !!$_[1];
+    PerlIO::via::Timeout->_fh2prop($_[0])->{sys_timeout_enabled};
 }
 
 1;
