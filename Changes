@@ -1,5 +1,9 @@
 {{$NEXT}}
 
+0.17      2013-12-01 23:47:28 Europe/Paris
+        . now timeout supported for sysread and syswrite as well
+        . better OO API using Role::Tiny
+
 0.16      2013-10-28 21:04:49 Europe/Paris
 
 0.15      2013-10-10 14:53:41 Europe/Paris
