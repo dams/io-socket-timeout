@@ -308,8 +308,8 @@ sub socketpair::with::timeout {
 
 # sysread FILEHANDLE,SCALAR,LENGTH,OFFSET
 BEGIN {
+    my $_no_wrapping;
     *CORE::GLOBAL::sysread = sub {
-        state $_no_wrapping;
         $_no_wrapping || ! PerlIO::via::Timeout->_fh2prop($_[0])->{sys_timeout_enabled}
           and return CORE::sysread($_[0], $_[1], $_[2]);
 
@@ -322,8 +322,8 @@ BEGIN {
 
 # syswrite FILEHANDLE,SCALAR,LENGTH,OFFSET
 BEGIN {
+    my $_no_wrapping;
     *CORE::GLOBAL::syswrite = sub {
-        state $_no_wrapping;
         $_no_wrapping || ! PerlIO::via::Timeout->_fh2prop($_[0])->{sys_timeout_enabled}
           and return CORE::syswrite($_[0], $_[1], $_[2]);
 
