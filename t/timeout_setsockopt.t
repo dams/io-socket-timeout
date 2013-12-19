@@ -1,15 +1,11 @@
 use strict;
 use warnings;
 
-BEGIN {
-    $ENV{PERL_IO_SOCKET_TIMEOUT_FORCE_SELECT} = 1;
-}
-
 use Test::More;
 use FindBin qw($Bin);
 use lib "$Bin/tlib";
 use TestTimeout;
-use Errno qw(ETIMEDOUT);
+use Errno qw(ETIMEDOUT EWOULDBLOCK);
 
 subtest 'test with no delays and no timeouts', sub {
 TestTimeout->test( connection_delay => 0,
@@ -27,27 +23,6 @@ TestTimeout->test( connection_delay => 0,
                  );
 };
 
-subtest 'test with read timeout', sub {
-
-TestTimeout->test( connection_delay => 0,
-                   read_timeout => 0.2,
-                   read_delay => 3,
-                   write_timeout => 0,
-                   write_delay => 0,
-                   callback => sub {
-                       my ($client) = @_;
-                       ok $client->isa('IO::Socket::Timeout::Role::PerlIO'), 'client does PerlIO';
-                       $client->print("OK\n");
-                       my $response = $client->getline;
-                       is $response, "SOK\n", "got proper response 1";
-                       $client->print("OK2\n");
-                       $response = $client->getline;
-                       is $response, undef, "we've hit timeout";
-                       is 0+$!, ETIMEDOUT, "and error is timeout";
-                   },
-                 );
-};
-
 subtest 'test with sysread timeout', sub {
 TestTimeout->test( connection_delay => 0,
                    read_timeout => 0.2,
@@ -56,19 +31,20 @@ TestTimeout->test( connection_delay => 0,
                    write_delay => 0,
                    callback => sub {
                        my ($client) = @_;
-                       ok $client->isa('IO::Socket::Timeout::Role::PerlIO'), 'client does PerlIO';
+                       ok $client->isa('IO::Socket::Timeout::Role::SetSockOpt'),
+                         'client does SetSockOpt';
                        $client->print("OK\n");
                        sysread $client, my $response, 4;
-
                        is $response, "SOK\n", "got proper response 1";
                        $client->print("OK2\n");
                        $response = undef;
+                       ok ! ${*$client}{_invalid}, "socket is valid";
                        sysread $client, $response, 5;
-                       is $response, undef, "we've hit timeout";
-                       is 0+$!, ETIMEDOUT, "and error is timeout";
+                       is length($response || ''), 0, "we've hit timeout";
+                       ok (0+$! == ETIMEDOUT || 0+$! == EWOULDBLOCK),
+                         "and error is timeout or wouldblock";
                    },
                  );
 };
 
 done_testing;
-
