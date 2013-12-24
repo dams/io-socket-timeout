@@ -6,6 +6,12 @@ use FindBin qw($Bin);
 use lib "$Bin/tlib";
 use TestTimeout;
 use Errno qw(ETIMEDOUT EWOULDBLOCK);
+use Config;
+
+my $osname = $Config{osname};
+( $osname eq 'darwin' || $osname eq 'linux' )
+  or plan skip_all => "Can't test setsockopt on this OS";
+
 
 subtest 'test with no delays and no timeouts', sub {
 TestTimeout->test( connection_delay => 0,
