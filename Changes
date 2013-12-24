@@ -1,4 +1,5 @@
 {{$NEXT}}
+        . fix perl 5.8 compatibility
 
 0.19      2013-12-24 03:54:20 Europe/Paris
 
