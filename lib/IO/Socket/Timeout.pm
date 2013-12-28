@@ -21,19 +21,13 @@ C<IO::Socket::INET>.
 
   use IO::Socket::With::Timeout;
 
-  # creates a IO::Socket::INET::With::Timeout object
-  my $socket = IO::Socket::INET->new::with::timeout( Timeout => 2,
-                                                     ReadTimeout => 0.5,
-                                                     # other standard arguments );
-
-  my $socket = IO::Socket::UNIX->new::with::timeout( Timeout => 2,
-                                                     ReadTimeout => 0.5,
-                                                     WriteTimeout => 0.5,
-                                                     # other standard arguments );
-
-  my $socket = IO::Socket::INET->new::with::timeout( Timeout => 2,
-                                                     ReadWriteTimeout => 0.5,
-                                                     # other standard arguments );
+  # creates a standard IO::Socket::INET object, with a connection timeout
+  my $socket = IO::Socket::INET->new( Timeout => 2 );
+  # enable read and write timeouts on the socket
+  IO::Socket::Timeout->enable_timeouts_on($socket);
+  # setup the timeouts
+  $socket->read_timeout(0.5);
+  $socket->write_timeout(0.5);
 
   # When using the socket:
   use Errno qw(ETIMEDOUT EWOULDBLOCK);
@@ -43,57 +37,23 @@ C<IO::Socket::INET>.
     die "timeout reading on the socket";
   }
 
-=head1 CONSTRUCTORS
+=head1 CLASS METHOD
 
-=head2 new::with::timeout
+=head2 enable_timeouts_on
 
-To be able to work with any class that is or inherits from IO::Socket, the
-interface of this module is a bit unusual.
+  IO::Socket::Timeout->enable_timeouts_on($socket);
 
-C<IO::Socket::INET->new::with::timeout(...)> will return an instance of
-C<IO::Socket::INET>, as if it had been called with
-C<IO::Socket::INET->new(...)>. However, it'll apply some mechanism on the
-resulting socket object so that it times out on read, write, or both.
+Given a socket, it'll return it, but will enable read and write timeouts on it.
+You'll have to use C<read_timeout> and C<write_timeout> on it later on.
 
-The way the socket will timeout ( on connection, read, write, how long), can be
-specified with these parameters:
+Returns the socket, so that you can chain this method with others.
 
-=over
-
-=item Timeout
-
-This is the default parameter that already exists in IO::Socket. If set to a
-value, the socket will timeout at B<connection time>.
-
-=item ReadTimeout
-
-If set to a value, the socket will timeout on reads. Value is in seconds, floats
-accepted.
-
-=item WriteTimeout
-
-If set to a value, the socket will timeout on writes. Value is in seconds, floats
-accepted.
-
-=item ReadWriteTimeout
-
-If set to a value, the socket will timeout on reads and writes. Value is in seconds, floats
-accepted. If set, this option superseeds ReadTimeout and WriteTimeout.
-
-=back
-
-=head2 socketpair::with::timeout
-
-There is an other way to create sockets from scratch, via C<socketpair>. As for
-the C<new> constructor, this module provides its counterpart with timeout
-feature.
-
-C<IO::Socket::INET->socketpair::with::timeout(...)> will return two instances of
-C<IO::Socket::INET>, as if it had been called with
-C<IO::Socket::INET->socketpair(...)>. However, it'll apply some mechanism on the
-resulting socket object so that it times out on read, write, or both.
+If the argument is C<undef>, the method simply returns empty list.
 
 =head1 METHODS
+
+These methods are to be called on a socket that has been previously passed to
+C<enable_timeouts_on()>.
 
 =head2 read_timeout
 
@@ -128,23 +88,6 @@ Re-enable the read and write timeouts for a socket created with this module.
 
 Get or Set the fact that a socket has timeouts enabled.
 
-=head1 CHANGE SETTINGS AFTER CREATION
-
-You can change the timeout settings of a socket after it has been instanciated.
-
-  use IO::Socket::With::Timeout;
-  # create a socket with read timeout
-  my $socket = IO::Socket::INET->new::with::timeout( Timeout => 2,
-                                                     ReadTimeout => 0.5,
-                                                     # other standard arguments );
-  # change read_timeout to 5 and write timeout to 1.5 sec
-  $socket->read_timeout(5)
-  $socket->write_timeout(1.5)
-  # actually disable the timeout for now
-  $socket->disable_timeout()
-  # when re-enabling it, timeouts value are restored
-  $socket->enable_timeout()
-
 =head1 WHEN TIMEOUT IS HIT
 
 When a timeout (read, write) is hit on the socket, the function trying to be
@@ -162,21 +105,36 @@ third-party module, like C<Action::Retry>. Something like this:
 
   my $socket;
 
-  my $answer;
   my $action = Action::Retry->new(
     attempt_code => sub {
         # (re-)create the socket if needed
-        $socket && ! $socket->error
-          or $socket = IO::Socket->new::with::timeout(ReadTimeout => 0.5);
+        if (! $socket) {
+          $socket = IO::Socket->new(...);
+          IO::Socket::Timeout->enable_timeouts_on($socket);
+          $socket->read_timeout(0.5);
+        }
         # send the request, read the answer
         $socket->print($_[0]);
-        defined($answer = $socket->getline) or die $!;
+        defined(my $answer = $socket->getline)
+          or $socket = undef, die $!;
         $answer;
     },
     on_failure_code => sub { die 'aborting, to many retries' },
   );
 
   my $reply = $action->run('GET mykey');
+
+=head1 ENVIRONMENT VARIABLE
+
+=head2 PERL_IO_SOCKET_TIMEOUT_FORCE_SELECT
+
+This module implements timeouts using one of two strategy. If possible (if the
+operating system is linux or mac), it uses C<setsockopt()> to set read / write
+timeouts. Otherwise it uses C<select()> before performing socket operations.
+
+To force the use of C<select()>, you can set
+PERL_IO_SOCKET_TIMEOUT_FORCE_SELECT to a true value at compile time (typically
+in a BEGIN block)
 
 =head1 SEE ALSO
 
@@ -189,32 +147,12 @@ useful remarks.
 
 =cut
 
-sub new::with::timeout {
-    my $class = shift
-      or croak "needs a class name. Try IO::Socket::INET->new::with::timeout(...)";
-
-    my $class_file = $class;
-    $class_file =~ s!::|'!/!g;
-    $class_file .= '.pm';
-    require $class_file;
-
-    $class->isa('IO::Socket')
-      or croak 'new::with::timeout can be used only on classes that isa IO::Socket';
-
-    # if arguments are not key values, just original class constructor
-    @_ % 2
-      and return $class->new(@_);
-
-    my %args = @_;
-
-    my $read_timeout = delete $args{ReadTimeout};
-    my $write_timeout = delete $args{WriteTimeout};
-    if (defined (my $readwrite_timeout = delete $args{ReadWriteTimeout})) {
-        $read_timeout = $write_timeout = $readwrite_timeout;
-    }
-    
-    my $socket = $class->new(%args)
+sub enable_timeouts_on {
+    my ($class, $socket) = @_;
+    defined $socket
       or return;
+    $socket->isa('IO::Socket')
+      or croak 'make_timeouts_aware can be used only on instances that inherit from IO::Socket';
 
     my $osname = $Config{osname};
     if ( ! $ENV{PERL_IO_SOCKET_TIMEOUT_FORCE_SELECT}
@@ -226,59 +164,8 @@ sub new::with::timeout {
         _compose_roles($socket, 'IO::Socket::Timeout::Role::PerlIO');
     }
 
-    $read_timeout && $read_timeout > 0
-      and $socket->read_timeout($read_timeout);
-    $write_timeout && $write_timeout > 0
-      and $socket->write_timeout($write_timeout);
     $socket->enable_timeout;
-
     return $socket;
-}
-
-sub socketpair::with::timeout {
-    my $class = shift
-      or croak "needs a class name. Try IO::Socket::INET->socketpair::with::timeout(...)";
-
-    my $class_file = $class;
-    $class_file =~ s!::|'!/!g;
-    $class_file .= '.pm';
-    require $class_file;
-
-    $class->isa('IO::Socket')
-      or croak 'new::with::timeout can be used only on classes that isa IO::Socket';
-
-    # we expect DOMAIN, TYPE, PROTOCOL, TIMEOUT_ARGS. Otherwise just call original
-    @_ == 4
-      or return $class->socketpair(@_);
-
-    my $timeout_args = pop;
-
-    my %args = %$timeout_args;
-    my $read_timeout = delete $args{ReadTimeout};
-    my $write_timeout = delete $args{WriteTimeout};
-    if (defined (my $readwrite_timeout = delete $args{ReadWriteTimeout})) {
-        $read_timeout = $write_timeout = $readwrite_timeout;
-    }
-
-    my ($socket1, $socket2) = $class->socketpair(%args)
-       or return;
-
-    my $osname = $Config{osname};
-    foreach my $socket ($socket1, $socket2) {
-        if ( ! $ENV{PERL_IO_SOCKET_TIMEOUT_FORCE_SELECT}
-             && ( $osname eq 'darwin' || $osname eq 'linux' ) ) {
-            _compose_roles($socket, 'IO::Socket::Timeout::Role::SetSockOpt');
-        } else {
-            require PerlIO::via::Timeout;
-            binmode($socket, ':via(Timeout)');
-            _compose_roles($socket, 'IO::Socket::Timeout::Role::PerlIO');
-        }
-        $read_timeout && $read_timeout > 0
-          and $socket->read_timeout($read_timeout);
-        $write_timeout && $write_timeout > 0
-          and $socket->write_timeout($write_timeout);
-    }
-    return ($socket1, $socket2);
 }
 
 sub _compose_roles {

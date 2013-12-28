@@ -53,7 +53,8 @@ print "1..5\n";
 use IO::Socket;
 use IO::Socket::Timeout;
 
-$listen = IO::Socket::UNIX->new::with::timeout(Local => $PATH, Listen => 0, TimeoutRead => 5, TimeoutWrite => 5);
+$listen = IO::Socket::UNIX->new(Local => $PATH, Listen => 0, TimeoutRead => 5, TimeoutWrite => 5);
+IO::Socket::Timeout->enable_timeouts_on($listen);
 
 # Sometimes UNIX filesystems are mounted for security reasons
 # with "nodev" option which spells out "no" for creating UNIX
@@ -66,10 +67,11 @@ unless (defined $listen) {
 	for my $TMPDIR ($ENV{TMPDIR}, "/tmp") {
 	    if (defined $TMPDIR && -d $TMPDIR && -w $TMPDIR) {
 		$PATH = mktemp("$TMPDIR/sXXXXXXXX");
-		last if $listen = IO::Socket::UNIX->new::with::timeout(Local => $PATH,
+		last if $listen = IO::Socket::UNIX->new(Local => $PATH,
 							Listen => 0,  TimeoutRead => 5, TimeoutWrite => 5);
 	    }
 	}
+    IO::Socket::Timeout->enable_timeouts_on($listen);
     }
     defined $listen or die "$PATH: $!";
 }
@@ -100,7 +102,8 @@ if($pid = fork()) {
     }
 } elsif(defined $pid) {
 
-    $sock = IO::Socket::UNIX->new::with::timeout(Peer => $PATH,  TimeoutRead => 5, TimeoutWrite => 5) or die "$!";
+    $sock = IO::Socket::UNIX->new(Peer => $PATH,  TimeoutRead => 5, TimeoutWrite => 5) or die "$!";
+    IO::Socket::Timeout->enable_timeouts_on($sock);
 
     print $sock "ok 3\n";
 

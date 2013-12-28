@@ -38,7 +38,7 @@ eval {
 use IO::Socket; # for AF_INET
 use IO::Socket::Timeout;
 
-$listen = IO::Socket::INET->new::with::timeout(Listen => 2,
+$listen = IO::Socket::INET->new(Listen => 2,
 				Proto => 'tcp',
 				# some systems seem to need as much as 10,
 				# so be generous with the timeout
@@ -46,6 +46,7 @@ $listen = IO::Socket::INET->new::with::timeout(Listen => 2,
                 TimeoutRead => $TimeoutRead,
                 TimeoutWrite => $TimeoutWrite,
 			       ) or die "$!";
+IO::Socket::Timeout->enable_timeouts_on($listen);
 
 print "ok 1\n";
 
@@ -77,19 +78,20 @@ if($pid = fork()) {
 
 } elsif(defined $pid) {
 
-    $sock = IO::Socket::INET->new::with::timeout(PeerPort => $port,
+    $sock = IO::Socket::INET->new(PeerPort => $port,
 				  Proto => 'tcp',
 				  PeerAddr => 'localhost',
                 TimeoutRead => $TimeoutRead,
                 TimeoutWrite => $TimeoutWrite,
 				 )
-         || IO::Socket::INET->new::with::timeout(PeerPort => $port,
+         || IO::Socket::INET->new(PeerPort => $port,
 				  Proto => 'tcp',
 				  PeerAddr => '127.0.0.1',
                 TimeoutRead => $TimeoutRead,
                 TimeoutWrite => $TimeoutWrite,
 				 )
 	or die "$! (maybe your system does not have a localhost at all, 'localhost' or 127.0.0.1)";
+    IO::Socket::Timeout->enable_timeouts_on($sock);
 
     $sock->autoflush(1);
 
@@ -106,7 +108,8 @@ if($pid = fork()) {
 
 # Test various other ways to create INET sockets that should
 # also work.
-$listen = IO::Socket::INET->new::with::timeout(Listen => '', Timeout => 15, TimeoutRead => $TimeoutRead, TimeoutWrite => $TimeoutWrite, ) or die "$!";
+$listen = IO::Socket::INET->new(Listen => '', Timeout => 15, TimeoutRead => $TimeoutRead, TimeoutWrite => $TimeoutWrite, ) or die "$!";
+IO::Socket::Timeout->enable_timeouts_on($listen);
 $port = $listen->sockport;
 
 if($pid = fork()) {
@@ -123,8 +126,9 @@ if($pid = fork()) {
     $listen->close;
 } elsif (defined $pid) {
     # child, try various ways to connect
-    $sock = IO::Socket::INET->new::with::timeout("localhost:$port")
-         || IO::Socket::INET->new::with::timeout("127.0.0.1:$port");
+    $sock = IO::Socket::INET->new("localhost:$port")
+         || IO::Socket::INET->new("127.0.0.1:$port");
+    IO::Socket::Timeout->enable_timeouts_on($sock);
     if ($sock) {
 	print "not " unless $sock->connected;
 	print "ok 6\n";
@@ -146,7 +150,8 @@ if($pid = fork()) {
     # some machines seem to suffer from a race condition here
     sleep(2);
 
-    $sock = IO::Socket::INET->new::with::timeout("127.0.0.1:$port");
+    $sock = IO::Socket::INET->new("127.0.0.1:$port");
+    IO::Socket::Timeout->enable_timeouts_on($sock);
     if ($sock) {
        $sock->print("ok 10\n");
        $sock->print("done\n");
@@ -160,10 +165,11 @@ if($pid = fork()) {
     # some machines seem to suffer from a race condition here
     sleep(1);
 
-    $sock = IO::Socket->new::with::timeout(Domain => AF_INET,
+    $sock = IO::Socket->new(Domain => AF_INET,
                             PeerAddr => "localhost:$port")
-         || IO::Socket->new::with::timeout(Domain => AF_INET,
+         || IO::Socket->new(Domain => AF_INET,
                             PeerAddr => "127.0.0.1:$port");
+    IO::Socket::Timeout->enable_timeouts_on($sock);
     if ($sock) {
        $sock->print("ok 11\n");
        $sock->print("quit\n");
@@ -178,12 +184,13 @@ if($pid = fork()) {
 }
 
 # Then test UDP sockets
-$server = IO::Socket->new::with::timeout(Domain => AF_INET,
+$server = IO::Socket->new(Domain => AF_INET,
                           Proto  => 'udp',
                           LocalAddr => 'localhost')
-       || IO::Socket->new::with::timeout(Domain => AF_INET,
+       || IO::Socket->new(Domain => AF_INET,
                           Proto  => 'udp',
                           LocalAddr => '127.0.0.1', TimeoutRead => $TimeoutRead, TimeoutWrite => $TimeoutWrite);
+IO::Socket::Timeout->enable_timeouts_on($server);
 $port = $server->sockport;
 
 if ($pid = fork()) {
@@ -192,10 +199,11 @@ if ($pid = fork()) {
     print $buf;
 } elsif (defined($pid)) {
     #child
-    $sock = IO::Socket::INET->new::with::timeout(Proto => 'udp',
+    $sock = IO::Socket::INET->new(Proto => 'udp',
                                   PeerAddr => "localhost:$port", TimeoutRead => $TimeoutRead, TimeoutWrite => $TimeoutWrite)
-         || IO::Socket::INET->new::with::timeout(Proto => 'udp',
+         || IO::Socket::INET->new(Proto => 'udp',
                                   PeerAddr => "127.0.0.1:$port", TimeoutRead => $TimeoutRead, TimeoutWrite => $TimeoutWrite);
+    IO::Socket::Timeout->enable_timeouts_on($sock);
     $sock->send("ok 12\n");
     sleep(1);
     $sock->send("ok 12\n");  # send another one to be sure
@@ -233,8 +241,9 @@ if( !open( SRC, "< $0")) {
 ### TEST 16
 ### Start the server
 #
-my $listen = IO::Socket::INET->new::with::timeout( Listen => 2, Proto => 'tcp', Timeout => 15, TimeoutRead => $TimeoutRead, TimeoutWrite => $TimeoutWrite) ||
+my $listen = IO::Socket::INET->new( Listen => 2, Proto => 'tcp', Timeout => 15, TimeoutRead => $TimeoutRead, TimeoutWrite => $TimeoutWrite) ||
     print "not ";
+IO::Socket::Timeout->enable_timeouts_on($listen);
 print "ok 16\n";
 die if( !defined( $listen));
 my $serverport = $listen->sockport;
@@ -248,8 +257,9 @@ if( $server_pid) {
     ### TEST 18
     ### Get data from the server using a single stream
     #
-    $sock = IO::Socket::INET->new::with::timeout("localhost:$serverport")
-         || IO::Socket::INET->new::with::timeout("127.0.0.1:$serverport");
+    $sock = IO::Socket::INET->new("localhost:$serverport")
+         || IO::Socket::INET->new("127.0.0.1:$serverport");
+    IO::Socket::Timeout->enable_timeouts_on($sock);
 
     if ($sock) {
 	$sock->print("send\n");
@@ -280,8 +290,9 @@ if( $server_pid) {
     ### TESTS 19,20,21,22
     ### Try to ping-pong some Unicode.
     #
-    $sock = IO::Socket::INET->new::with::timeout("localhost:$serverport")
-         || IO::Socket::INET->new::with::timeout("127.0.0.1:$serverport");
+    $sock = IO::Socket::INET->new("localhost:$serverport")
+         || IO::Socket::INET->new("127.0.0.1:$serverport");
+    IO::Socket::Timeout->enable_timeouts_on($sock);
 
     if ($has_perlio) {
 	print binmode($sock, ":utf8") ? "ok 19\n" : "not ok 19\n";
@@ -332,8 +343,9 @@ if( $server_pid) {
     ### TEST 24
     ### Stop the server
     #
-    $sock = IO::Socket::INET->new::with::timeout("localhost:$serverport")
-         || IO::Socket::INET->new::with::timeout("127.0.0.1:$serverport");
+    $sock = IO::Socket::INET->new("localhost:$serverport")
+         || IO::Socket::INET->new("127.0.0.1:$serverport");
+    IO::Socket::Timeout->enable_timeouts_on($sock);
 
     if ($sock) {
 	$sock->print("done\n");
@@ -390,8 +402,9 @@ if( $server_pid) {
 
 # test Blocking option in constructor
 
-$sock = IO::Socket::INET->new::with::timeout(Blocking => 0, TimeoutRead => $TimeoutRead, TimeoutWrite => $TimeoutWrite)
+$sock = IO::Socket::INET->new(Blocking => 0, TimeoutRead => $TimeoutRead, TimeoutWrite => $TimeoutWrite)
     or print "not ";
+IO::Socket::Timeout->enable_timeouts_on($sock);
 print "ok 25\n";
 
 if ( $^O eq 'qnx' ) {

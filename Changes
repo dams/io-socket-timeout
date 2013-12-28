@@ -1,4 +1,5 @@
 {{$NEXT}}
+        . change the API so that it's less magic.
 
 0.21      2013-12-24 04:00:00 Europe/Paris
         . fix tests on non (linux or mac) OS

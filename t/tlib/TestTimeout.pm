@@ -57,13 +57,14 @@ sub test {
                                              $p{write_delay},
                                            );
 
-    my $client = IO::Socket::INET->new::with::timeout(
+    my $client = IO::Socket::INET->new(
         PeerHost        => '127.0.0.1',
         PeerPort        => $server->port,
         $p{connection_timeout} ? (Timeout => $p{connection_timeout} ) : (),
-        ReadTimeout => $p{read_timeout},
-        WriteTimeout => $p{write_timeout},
     );
+    IO::Socket::Timeout->enable_timeouts_on($client);
+    $p{read_timeout} and $client->read_timeout($p{read_timeout});
+    $p{write_timeout} and $client->write_timeout($p{write_timeout});
 
     my $etimeout = strerror(ETIMEDOUT);
     my $ereset   = strerror(ECONNRESET);
