@@ -1,4 +1,5 @@
 {{$NEXT}}
+        . add a preload option in import
 
 0.22      2013-12-28 22:31:18 Europe/Paris
         . change the API so that it's less magic.
