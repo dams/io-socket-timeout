@@ -124,6 +124,13 @@ third-party module, like C<Action::Retry>. Something like this:
 
   my $reply = $action->run('GET mykey');
 
+=head1 IMPORT options
+
+You can give a list of socket modules names when use-ing this module, so that
+internally, composed classes needed gets created and loaded at compile time.
+
+  use IO::Socket::With::Timeout qw(IO::Socket::INET);
+
 =head1 ENVIRONMENT VARIABLE
 
 =head2 PERL_IO_SOCKET_TIMEOUT_FORCE_SELECT
@@ -147,6 +154,15 @@ useful remarks.
 
 =cut
 
+sub import {
+    shift;
+    foreach (@_) {
+        _create_composed_class( $_, 'IO::Socket::Timeout::Role::SetSockOpt');
+        _create_composed_class( $_, 'IO::Socket::Timeout::Role::PerlIO');
+    }
+}
+
+
 sub enable_timeouts_on {
     my ($class, $socket) = @_;
     defined $socket
@@ -168,9 +184,8 @@ sub enable_timeouts_on {
     return $socket;
 }
 
-sub _compose_roles {
-    my ($instance, @roles) = @_;
-    my $class = ref $instance;
+sub _create_composed_class {
+    my ($class, @roles) = @_;
     my $composed_class = $class . '__with__' . join('__and__', @roles);
     my $path = $composed_class; $path =~ s|::|/|g; $path .= '.pm';
     if ( ! exists $INC{$path}) {
@@ -178,7 +193,12 @@ sub _compose_roles {
         *{"${composed_class}::ISA"} = [ $class, @roles ];
         $INC{$path} = __FILE__;
     }
-    bless $instance, $composed_class;
+    return $composed_class;
+}
+
+sub _compose_roles {
+    my ($instance, @roles) = @_;
+    bless $instance, _create_composed_class(ref $instance, @roles);
 }
 
 # sysread FILEHANDLE,SCALAR,LENGTH,OFFSET
