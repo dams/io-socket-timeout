@@ -172,7 +172,7 @@ sub enable_timeouts_on {
 
     my $osname = $Config{osname};
     if ( ! $ENV{PERL_IO_SOCKET_TIMEOUT_FORCE_SELECT}
-         && ( $osname eq 'darwin' || $osname eq 'linux' ) ) {
+         && ( $osname eq 'darwin' || $osname eq 'linux' || $osname eq 'freebsd' ) ) {
         _compose_roles($socket, 'IO::Socket::Timeout::Role::SetSockOpt');
     } else {
         require PerlIO::via::Timeout;
@@ -205,7 +205,7 @@ sub _compose_roles {
 BEGIN {
     my $osname = $Config{osname};
     if ( $ENV{PERL_IO_SOCKET_TIMEOUT_FORCE_SELECT} ||
-         $osname ne 'darwin' && $osname ne 'linux'
+         $osname ne 'darwin' && $osname ne 'linux' && $osname ne 'freebsd'
        ) {
         # this variable avoids infinite recursion, because
         # PerlIO::via::Timeout->READ calls sysread.
@@ -226,7 +226,7 @@ BEGIN {
 BEGIN {
     my $osname = $Config{osname};
     if ( $ENV{PERL_IO_SOCKET_TIMEOUT_FORCE_SELECT} ||
-         $osname ne 'darwin' && $osname ne 'linux'
+         $osname ne 'darwin' && $osname ne 'linux' && $osname ne 'freebsd'
        ) {
         # this variable avoids infinite recursion, because
         # PerlIO::via::Timeout->WRITE calls syswrite.
