@@ -1,5 +1,8 @@
 {{$NEXT}}
 
+0.25      2014-07-04 14:01:19 Europe/Amsterdam
+        . FreeBSD compatibility ( Eric Cholet, GH#1 )
+
 0.24      2014-03-11 15:16:25 Europe/Amsterdam
         . minor doc fix
 
