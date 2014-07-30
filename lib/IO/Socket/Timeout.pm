@@ -31,7 +31,7 @@ C<IO::Socket::INET>.
 
   # When using the socket:
   use Errno qw(ETIMEDOUT EWOULDBLOCK);
-  print $socket $request;
+  print $socket "some request";
   my $response = <$socket>;
   if (! $response && ( 0+$! == ETIMEDOUT || 0+$! == EWOULDBLOCK )) {
     die "timeout reading on the socket";
