@@ -1,5 +1,8 @@
 {{$NEXT}}
 
+0.26      2014-07-30 11:36:41 Europe/Amsterdam
+        . Fix tests ( gcs )
+
 0.25      2014-07-04 14:01:19 Europe/Amsterdam
         . FreeBSD compatibility ( Eric Cholet, GH#1 )
 
