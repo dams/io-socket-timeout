@@ -62,10 +62,11 @@ sub test {
         PeerPort        => $server->port,
         $p{connection_timeout} ? (Timeout => $p{connection_timeout} ) : (),
     );
-    IO::Socket::Timeout->enable_timeouts_on($client);
-    $p{read_timeout} and $client->read_timeout($p{read_timeout});
-    $p{write_timeout} and $client->write_timeout($p{write_timeout});
-
+    if (! $p{no_timeouts} ) {
+        IO::Socket::Timeout->enable_timeouts_on($client);
+        $p{read_timeout} and $client->read_timeout($p{read_timeout});
+        $p{write_timeout} and $client->write_timeout($p{write_timeout});
+    }
     my $etimeout = strerror(ETIMEDOUT);
     my $ereset   = strerror(ECONNRESET);
     $p{callback}->($client, $etimeout, $ereset);

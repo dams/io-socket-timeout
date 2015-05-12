@@ -70,5 +70,25 @@ TestTimeout->test( connection_delay => 0,
                  );
 };
 
+subtest 'test standard sysread/syswrite no timeout', sub {
+TestTimeout->test( connection_delay => 0,
+                   read_delay => 0,
+                   write_delay => 0,
+                   no_timeouts => 1,
+                   callback => sub {
+                       my ($client) = @_;
+                       ok ! $client->isa('IO::Socket::Timeout::Role::PerlIO'), 'client does not do PerlIO';
+                       $client->print("OK\n");
+                       sysread $client, my $response, 4;
+
+                       is $response, "SOK\n", "got proper response 1";
+                       $client->print("OK2\n");
+                       $response = undef;
+                       sysread $client, $response, 5;
+                       is $response, "SOK2\n", "got proper response 2";
+                   },
+                 );
+};
+
 done_testing;
 

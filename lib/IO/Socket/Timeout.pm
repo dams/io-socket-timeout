@@ -211,8 +211,11 @@ BEGIN {
         # PerlIO::via::Timeout->READ calls sysread.
         my $_prevent_deep_recursion;
         *CORE::GLOBAL::sysread = sub {
-            $_prevent_deep_recursion || ! PerlIO::via::Timeout->_fh2prop($_[0])->{timeout_enabled}
-              and return CORE::sysread($_[0], $_[1], $_[2], $_[3]);
+            my $args_count = scalar(@_);
+            $_prevent_deep_recursion || ! (PerlIO::via::Timeout->_fh2prop($_[0]) || {})->{timeout_enabled}
+              and return (  $args_count == 4 ? CORE::sysread($_[0], $_[1], $_[2], $_[3])
+                          :                    CORE::sysread($_[0], $_[1], $_[2])
+                         );
             $_prevent_deep_recursion = 1;
             require PerlIO::via::Timeout;
             my $ret_val = PerlIO::via::Timeout->READ($_[1], $_[2], $_[0]);
@@ -232,8 +235,12 @@ BEGIN {
         # PerlIO::via::Timeout->WRITE calls syswrite.
         my $_prevent_deep_recursion;
         *CORE::GLOBAL::syswrite = sub {
-            $_prevent_deep_recursion || ! PerlIO::via::Timeout->_fh2prop($_[0])->{timeout_enabled}
-              and return CORE::syswrite($_[0], $_[1], $_[2], $_[3]);
+            my $args_count = scalar(@_);
+            $_prevent_deep_recursion || ! (PerlIO::via::Timeout->_fh2prop($_[0]) || {})->{timeout_enabled}
+              and return(   $args_count == 4 ? CORE::syswrite($_[0], $_[1], $_[2], $_[3])
+                          : $args_count == 3 ? CORE::syswrite($_[0], $_[1], $_[2])
+                          :                    CORE::syswrite($_[0], $_[1])
+                        );
             $_prevent_deep_recursion = 1;
             require PerlIO::via::Timeout;
             my $ret_val = PerlIO::via::Timeout->WRITE($_[1], $_[0]);
