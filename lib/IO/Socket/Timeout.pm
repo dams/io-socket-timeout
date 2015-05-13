@@ -135,9 +135,10 @@ internally, composed classes needed gets created and loaded at compile time.
 
 =head2 PERL_IO_SOCKET_TIMEOUT_FORCE_SELECT
 
-This module implements timeouts using one of two strategy. If possible (if the
-operating system is linux or mac), it uses C<setsockopt()> to set read / write
-timeouts. Otherwise it uses C<select()> before performing socket operations.
+This module implements timeouts using one of two strategies. If possible (if
+the operating system is linux, freebsd or mac), it uses C<setsockopt()> to set
+read / write timeouts. Otherwise it uses C<select()> before performing socket
+operations.
 
 To force the use of C<select()>, you can set
 PERL_IO_SOCKET_TIMEOUT_FORCE_SELECT to a true value at compile time (typically
