@@ -1,4 +1,5 @@
 {{$NEXT}}
+        . Requires PerlIO::via::Timeout 0.31, that contains a race condition fix
 
 0.29      2015-05-13 20:44:41CEST+0200 Europe/Amsterdam
 
