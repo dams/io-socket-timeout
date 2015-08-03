@@ -1,5 +1,7 @@
 {{$NEXT}}
 
+0.31      2015-08-03 16:06:26CEST+0200 Europe/Paris
+
 0.30      2015-07-29 08:03:13CEST+0200 Europe/Paris
         . Requires PerlIO::via::Timeout 0.31, that contains a race condition fix
 
