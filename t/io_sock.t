@@ -28,7 +28,7 @@ my $TimeoutWrite = 5;
 my $has_perlio = $] >= 5.008 && find PerlIO::Layer 'perlio';
 
 $| = 1;
-print "1..26\n";
+print "1..13\n";
 
 eval {
     $SIG{ALRM} = sub { die; };
@@ -59,51 +59,6 @@ if ($^O eq 'os2' and
 
 $port = $listen->sockport;
 
-if($pid = fork()) {
-
-    $sock = $listen->accept() or die "accept failed: $!";
-    print "ok 2\n";
-
-    $sock->autoflush(1);
-    
-    print $sock->getline();
-
-    print $sock "ok 4\n";
-
-    $sock->close;
-
-    waitpid($pid,0);
-
-    print "ok 5\n";
-
-} elsif(defined $pid) {
-
-    $sock = IO::Socket::INET->new(PeerPort => $port,
-				  Proto => 'tcp',
-				  PeerAddr => 'localhost',
-				 )
-         || IO::Socket::INET->new(PeerPort => $port,
-				  Proto => 'tcp',
-				  PeerAddr => '127.0.0.1',
-				 )
-	or die "$! (maybe your system does not have a localhost at all, 'localhost' or 127.0.0.1)";
-    IO::Socket::Timeout->enable_timeouts_on($sock);
-    $sock->read_timeout($TimeoutRead);
-    $sock->write_timeout($TimeoutWrite);
-
-    $sock->autoflush(1);
-
-    print $sock "ok 3\n";
-
-    print $sock->getline();
-
-    $sock->close;
-
-    exit;
-} else {
- die;
-}
-
 # Test various other ways to create INET sockets that should
 # also work.
 $listen = IO::Socket::INET->new(Listen => '', Timeout => 15, ) or die "$!";
@@ -131,20 +86,20 @@ if($pid = fork()) {
     IO::Socket::Timeout->enable_timeouts_on($sock);
     if ($sock) {
 	print "not " unless $sock->connected;
-	print "ok 6\n";
-       $sock->print("ok 7\n");
+	print "ok 2\n";
+       $sock->print("ok 3\n");
        sleep(1);
-       print "ok 8\n";
-       $sock->print("ok 9\n");
+       print "ok 4\n";
+       $sock->print("ok 5\n");
        $sock->print("done\n");
        $sock->close;
     }
     else {
 	print "# $@\n";
-	print "not ok 6\n";
-	print "not ok 7\n";
-	print "not ok 8\n";
-	print "not ok 9\n";
+	print "not ok 2\n";
+	print "not ok 3\n";
+	print "not ok 4\n";
+	print "not ok 5\n";
     }
 
     # some machines seem to suffer from a race condition here
@@ -153,13 +108,13 @@ if($pid = fork()) {
     $sock = IO::Socket::INET->new("127.0.0.1:$port");
     IO::Socket::Timeout->enable_timeouts_on($sock);
     if ($sock) {
-       $sock->print("ok 10\n");
+       $sock->print("ok 6\n");
        $sock->print("done\n");
        $sock->close;
     }
     else {
 	print "# $@\n";
-	print "not ok 10\n";
+	print "not ok 6\n";
     }
 
     # some machines seem to suffer from a race condition here
@@ -171,10 +126,10 @@ if($pid = fork()) {
                             PeerAddr => "127.0.0.1:$port");
     IO::Socket::Timeout->enable_timeouts_on($sock);
     if ($sock) {
-       $sock->print("ok 11\n");
+       $sock->print("ok 7\n");
        $sock->print("quit\n");
     } else {
-       print "not ok 11\n";
+       print "not ok 7\n";
     }
     $sock = undef;
     sleep(1);
@@ -208,25 +163,25 @@ if ($pid = fork()) {
     IO::Socket::Timeout->enable_timeouts_on($sock);
     $sock->read_timeout($TimeoutRead);
     $sock->write_timeout($TimeoutWrite);
-    $sock->send("ok 12\n");
+    $sock->send("ok 8\n");
     sleep(1);
-    $sock->send("ok 12\n");  # send another one to be sure
+    $sock->send("ok 8\n");  # send another one to be sure
     exit;
 } else {
     die;
 }
 
 print "not " unless $server->blocking;
-print "ok 13\n";
+print "ok 9\n";
 
 if ( $^O eq 'qnx' ) {
   # QNX4 library bug: Can set non-blocking on socket, but
   # cannot return that status.
-  print "ok 14 # skipped on QNX4\n";
+  print "ok 10 # skipped on QNX4\n";
 } else {
   $server->blocking(0);
   print "not " if $server->blocking;
-  print "ok 14\n";
+  print "ok 10\n";
 }
 
 ### TEST 15
@@ -235,175 +190,11 @@ if ( $^O eq 'qnx' ) {
 #
 local @data;
 if( !open( SRC, "< $0")) {
-    print "not ok 15 - $!\n";
+    print "not ok 11 - $!\n";
 } else {
     @data = <SRC>;
     close(SRC);
-    print "ok 15\n";
-}
-
-### TEST 16
-### Start the server
-#
-my $listen = IO::Socket::INET->new( Listen => 2, Proto => 'tcp', Timeout => 15) ||
-    print "not ";
-IO::Socket::Timeout->enable_timeouts_on($listen);
-$listen->read_timeout($TimeoutRead);
-$listen->write_timeout($TimeoutWrite);
-print "ok 16\n";
-die if( !defined( $listen));
-my $serverport = $listen->sockport;
-my $server_pid = fork();
-if( $server_pid) {
-
-    ### TEST 17 Client/Server establishment
-    #
-    print "ok 17\n";
-
-    ### TEST 18
-    ### Get data from the server using a single stream
-    #
-    $sock = IO::Socket::INET->new("localhost:$serverport")
-         || IO::Socket::INET->new("127.0.0.1:$serverport");
-    IO::Socket::Timeout->enable_timeouts_on($sock);
-
-    if ($sock) {
-	$sock->print("send\n");
-
-	my @array = ();
-	while( <$sock>) {
-	    push( @array, $_);
-	}
-
-	$sock->print("done\n");
-	$sock->close;
-
-	print "not " if( @array != @data);
-    } else {
-	print "not ";
-    }
-    print "ok 18\n";
-
-    ### TEST 21
-    ### Get data from the server using a stream, which is
-    ### interrupted by eof calls.
-    ### On perl-5.7.0@7673 this failed in a SOCKS environment, because eof
-    ### did an getc followed by an ungetc in order to check for the streams
-    ### end. getc(3) got replaced by the SOCKS funktion, which ended up in
-    ### a recv(2) call on the socket, while ungetc(3) put back a character
-    ### to an IO buffer, which never again was read.
-    #
-    ### TESTS 19,20,21,22
-    ### Try to ping-pong some Unicode.
-    #
-    $sock = IO::Socket::INET->new("localhost:$serverport")
-         || IO::Socket::INET->new("127.0.0.1:$serverport");
-    IO::Socket::Timeout->enable_timeouts_on($sock);
-
-    if ($has_perlio) {
-	print binmode($sock, ":utf8") ? "ok 19\n" : "not ok 19\n";
-    } else {
-	print "ok 19 - Skip: no perlio\n";
-    }
-
-    if ($sock) {
-
-	if ($has_perlio) {
-	    $sock->print("ping \x{100}\n");
-	    chomp(my $pong = scalar <$sock>);
-	    print $pong =~ /^pong (.+)$/ && $1 eq "\x{100}" ?
-		"ok 20\n" : "not ok 20\n";
-
-	    $sock->print("ord \x{100}\n");
-	    chomp(my $ord = scalar <$sock>);
-	    print $ord == 0x100 ?
-		"ok 21\n" : "not ok 21\n";
-
-	    $sock->print("chr 0x100\n");
-	    chomp(my $chr = scalar <$sock>);
-	    print $chr eq "\x{100}" ?
-		"ok 22\n" : "not ok 22\n";
-	} else {
-	    print "ok $_ - Skip: no perlio\n" for 20..22;
-	}
-
-	$sock->print("send\n");
-
-	my @array = ();
-	while( !eof( $sock ) ){
-	    while( <$sock>) {
-		push( @array, $_);
-		last;
-	    }
-	}
-
-	$sock->print("done\n");
-	$sock->close;
-
-	print "not " if( @array != @data);
-    } else {
-	print "not ";
-    }
-    print "ok 23\n";
-
-    ### TEST 24
-    ### Stop the server
-    #
-    $sock = IO::Socket::INET->new("localhost:$serverport")
-         || IO::Socket::INET->new("127.0.0.1:$serverport");
-    IO::Socket::Timeout->enable_timeouts_on($sock);
-
-    if ($sock) {
-	$sock->print("done\n");
-	$sock->close;
-
-	print "not " if( 1 != kill 0, $server_pid);
-    } else {
-	print "not ";
-    }
-    print "ok 24\n";
-
-} elsif (defined($server_pid)) {
-   
-    ### Child
-    #
-    SERVER_LOOP: while (1) {
-	last SERVER_LOOP unless $sock = $listen->accept;
-	# Do not print ok/not ok for this binmode() since there's
-	# a race condition with our client, just die if we fail.
-	if ($has_perlio) { binmode($sock, ":utf8") or die }
-	while (<$sock>) {
-	    last SERVER_LOOP if /^quit/;
-	    last if /^done/;
-	    if (/^ping (.+)/) {
-		print $sock "pong $1\n";
-		next;
-	    }
-	    if (/^ord (.+)/) {
-		print $sock ord($1), "\n";
-		next;
-	    }
-	    if (/^chr (.+)/) {
-		print $sock chr(hex($1)), "\n";
-		next;
-	    }
-	    if (/^send/) {
-		print $sock @data;
-		last;
-	    }
-	    print;
-	}
-	$sock = undef;
-    }
-    $listen->close;
-    exit 0;
-
-} else {
-
-    ### Fork failed
-    #
-    print "not ok 17\n";
-    die;
+    print "ok 11\n";
 }
 
 # test Blocking option in constructor
@@ -413,14 +204,14 @@ $sock = IO::Socket::INET->new(Blocking => 0)
 IO::Socket::Timeout->enable_timeouts_on($sock);
 $sock->read_timeout($TimeoutRead);
 $sock->write_timeout($TimeoutWrite);
-print "ok 25\n";
+print "ok 12\n";
 
 if ( $^O eq 'qnx' ) {
-  print "ok 26 # skipped on QNX4\n";
+  print "ok 13 # skipped on QNX4\n";
   # QNX4 library bug: Can set non-blocking on socket, but
   # cannot return that status.
 } else {
   my $status = $sock->blocking;
   print "not " unless defined $status && !$status;
-  print "ok 26\n";
+  print "ok 13\n";
 }
