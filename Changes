@@ -1,4 +1,6 @@
 {{$NEXT}}
+
+0.32      2015-09-29 12:04:23CEST+0200 Europe/Paris
         . Remove test that comes from IO::Socket, is outdated and doesn't server anything. Fixes github issue #5
 
 0.31      2015-08-03 16:06:26CEST+0200 Europe/Paris
