@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use Config;
 use Carp;
+use Symbol qw(qualify_to_ref);
 
 
 # ABSTRACT: IO::Socket with read/write timeout
@@ -211,16 +212,17 @@ BEGIN {
         # this variable avoids infinite recursion, because
         # PerlIO::via::Timeout->READ calls sysread.
         my $_prevent_deep_recursion;
-        *CORE::GLOBAL::sysread = sub {
+        *CORE::GLOBAL::sysread = sub (*$$;$) {
             my $args_count = scalar(@_);
+            my $handle = qualify_to_ref($_[0], caller( ));
                $_prevent_deep_recursion
-            || ! PerlIO::via::Timeout::has_timeout_layer($_[0])
-            || ! PerlIO::via::Timeout::timeout_enabled($_[0])
-              and return (  $args_count == 4 ? CORE::sysread($_[0], $_[1], $_[2], $_[3])
-                          :                    CORE::sysread($_[0], $_[1], $_[2])
+            || ! PerlIO::via::Timeout::has_timeout_layer($handle)
+            || ! PerlIO::via::Timeout::timeout_enabled($handle)
+              and return (  $args_count == 4 ? CORE::sysread($handle, $_[1], $_[2], $_[3])
+                          :                    CORE::sysread($handle, $_[1], $_[2])
                          );
             $_prevent_deep_recursion = 1;
-            my $ret_val = PerlIO::via::Timeout->READ($_[1], $_[2], $_[0]);
+            my $ret_val = PerlIO::via::Timeout->READ($_[1], $_[2], $handle);
             $_prevent_deep_recursion = 0;
             return $ret_val;
         }
@@ -236,17 +238,19 @@ BEGIN {
         # this variable avoids infinite recursion, because
         # PerlIO::via::Timeout->WRITE calls syswrite.
         my $_prevent_deep_recursion;
-        *CORE::GLOBAL::syswrite = sub {
+        *CORE::GLOBAL::syswrite = sub (*$;$$) {
             my $args_count = scalar(@_);
+            my $handle = qualify_to_ref($_[0], caller( ));
+            
                $_prevent_deep_recursion
-            || ! PerlIO::via::Timeout::has_timeout_layer($_[0])
-            || ! PerlIO::via::Timeout::timeout_enabled($_[0])
-              and return(   $args_count == 4 ? CORE::syswrite($_[0], $_[1], $_[2], $_[3])
-                          : $args_count == 3 ? CORE::syswrite($_[0], $_[1], $_[2])
-                          :                    CORE::syswrite($_[0], $_[1])
+            || ! PerlIO::via::Timeout::has_timeout_layer($handle)
+            || ! PerlIO::via::Timeout::timeout_enabled($handle)
+              and return(   $args_count == 4 ? CORE::syswrite($handle, $_[1], $_[2], $_[3])
+                          : $args_count == 3 ? CORE::syswrite($handle, $_[1], $_[2])
+                          :                    CORE::syswrite($handle, $_[1])
                         );
             $_prevent_deep_recursion = 1;
-            my $ret_val = PerlIO::via::Timeout->WRITE($_[1], $_[0]);
+            my $ret_val = PerlIO::via::Timeout->WRITE($_[1], $handle);
             $_prevent_deep_recursion = 0;
             return $ret_val;
         }
